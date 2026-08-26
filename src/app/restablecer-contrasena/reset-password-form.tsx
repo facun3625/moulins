@@ -21,7 +21,7 @@ export function ResetPasswordForm({ email, token }: { email: string; token: stri
         <p className="text-sm text-muted-foreground">
           Este link no es válido. Pedí uno nuevo desde el login.
         </p>
-        <Link href="/recuperar-contrasena" className="text-sm underline">
+        <Link href="/recuperar-contrasena" className="text-sm text-primary hover:opacity-80">
           Pedir un link nuevo
         </Link>
       </div>

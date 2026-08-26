@@ -125,8 +125,11 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 />
               </TableCell>
               <TableCell>
-                <Link href={`/admin/pedidos/${o.id}`} className="inline-flex items-center gap-1.5 font-medium">
-                  <span className="underline">{o.buyerLabel}</span>
+                <Link
+                  href={`/admin/pedidos/${o.id}`}
+                  className="inline-flex items-center gap-1.5 font-medium hover:text-primary"
+                >
+                  <span>{o.buyerLabel}</span>
                   {o.isGuest && <Badge variant="secondary">Invitado</Badge>}
                 </Link>
               </TableCell>

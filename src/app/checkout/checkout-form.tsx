@@ -297,7 +297,7 @@ export function CheckoutForm({
           {appliedCoupon ? (
             <div className="flex items-center justify-between gap-2 rounded-xl border border-primary bg-muted px-3 py-2 text-sm">
               <span className="font-medium">{appliedCoupon.code}</span>
-              <button type="button" onClick={removeCoupon} className="text-sm text-primary underline">
+              <button type="button" onClick={removeCoupon} className="text-sm text-primary hover:opacity-80">
                 Quitar
               </button>
             </div>
@@ -492,7 +492,7 @@ export function CheckoutForm({
               No hace falta crear una cuenta para pedir.{" "}
               <Link
                 href={`/login?callbackUrl=/checkout`}
-                className="font-medium text-primary underline"
+                className="font-medium text-primary hover:opacity-80"
               >
                 ¿Ya tenés cuenta? Iniciá sesión
               </Link>

@@ -59,7 +59,7 @@ export function StoreFooter() {
             href="https://yaa.com.ar"
             target="_blank"
             rel="noreferrer"
-            className="font-semibold text-white underline underline-offset-2"
+            className="font-semibold text-white hover:opacity-80"
           >
             Conocé yaa.com.ar
           </a>

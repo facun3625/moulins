@@ -11,8 +11,8 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
-      size="icon"
+      variant="ghost"
+      size="icon-sm"
       aria-label={isDark ? "Cambiar a modo día" : "Cambiar a modo noche"}
       onClick={toggleTheme}
     >

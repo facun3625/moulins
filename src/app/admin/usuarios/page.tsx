@@ -90,7 +90,7 @@ export default async function UsersPage({
             return (
               <TableRow key={u.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/admin/usuarios/${u.id}`} className="underline">
+                  <Link href={`/admin/usuarios/${u.id}`} className="hover:text-primary">
                     {u.name || "Sin nombre"}
                   </Link>
                   {isSelf && <Badge variant="secondary" className="ml-2">Vos</Badge>}

@@ -24,7 +24,7 @@ export default async function NewProductPage() {
       {categories.length === 0 ? (
         <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
           Necesitás cargar al menos un tipo de producto antes de crear uno.{" "}
-          <Link href="/admin/productos" className="underline">
+          <Link href="/admin/productos" className="font-medium text-primary hover:opacity-80">
             Volver
           </Link>
         </p>

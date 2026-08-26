@@ -33,7 +33,7 @@ export function ForgotPasswordForm() {
           Si <strong>{email}</strong> tiene una cuenta con nosotros, te va a llegar un mail con el
           link para elegir una nueva contraseña.
         </p>
-        <Link href="/login" className="text-sm underline">
+        <Link href="/login" className="text-sm text-primary hover:opacity-80">
           Volver al login
         </Link>
       </div>
@@ -55,7 +55,7 @@ export function ForgotPasswordForm() {
       <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Enviando..." : "Mandar link"}
       </Button>
-      <Link href="/login" className="text-center text-sm text-muted-foreground underline">
+      <Link href="/login" className="text-center text-sm text-muted-foreground hover:text-primary">
         Volver al login
       </Link>
     </form>

@@ -81,7 +81,9 @@ export default async function AdminDashboard() {
               <CardTitle className="text-sm font-normal text-muted-foreground">
                 {s.label}
               </CardTitle>
-              <s.icon className="size-4 text-muted-foreground" />
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <s.icon className="size-4 text-primary" />
+              </span>
             </CardHeader>
             <CardContent className="text-2xl font-semibold">{s.value}</CardContent>
           </Card>
@@ -91,7 +93,7 @@ export default async function AdminDashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle>Pedidos recientes</CardTitle>
-          <Link href="/admin/pedidos" className="text-sm text-primary underline">
+          <Link href="/admin/pedidos" className="text-sm text-primary hover:opacity-80">
             Ver todos
           </Link>
         </CardHeader>
@@ -112,7 +114,7 @@ export default async function AdminDashboard() {
                 {recentOrders.map((o) => (
                   <TableRow key={o.id}>
                     <TableCell>
-                      <Link href={`/admin/pedidos/${o.id}`} className="font-medium underline">
+                      <Link href={`/admin/pedidos/${o.id}`} className="font-medium hover:text-primary">
                         {o.user?.name ?? o.user?.email ?? o.guestName ?? o.guestEmail ?? "Invitado"}
                       </Link>
                     </TableCell>

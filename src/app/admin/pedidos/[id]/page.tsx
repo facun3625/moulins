@@ -126,7 +126,7 @@ export default async function AdminOrderDetailPage({
               href={order.paymentProof.url}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-primary underline"
+              className="text-sm text-primary hover:opacity-80"
             >
               Ver comprobante
             </a>
