@@ -143,7 +143,21 @@
   [role="switch"],
   label[for],
   select,
-  summary {
+  summary,
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    cursor: pointer;
+  }
+
+  /* El ícono del calendario nativo también, no solo el resto del campo */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator,
+  input[type="week"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
 
