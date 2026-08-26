@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SparklesIcon, TicketIcon } from "lucide-react";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +46,10 @@ export default async function PuntosPage() {
     <div className="flex flex-1 flex-col">
       <StoreHero />
       <main className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col gap-6 rounded-t-3xl bg-background px-4 py-6 lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-3xl lg:shadow-2xl">
-        <div className="flex flex-col items-center gap-1 rounded-2xl border bg-muted/40 p-6 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border bg-muted/40 p-6 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10">
+            <SparklesIcon className="size-5 text-primary" />
+          </div>
           <span className="text-sm text-muted-foreground">Tus puntos</span>
           <span className="text-3xl font-bold">{balance}</span>
         </div>
@@ -72,9 +76,10 @@ export default async function PuntosPage() {
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Canjear por cupones</h2>
           {redeemable.length === 0 ? (
-            <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              Todavía no hay cupones para canjear con puntos.
-            </p>
+            <div className="flex flex-col items-center gap-2 rounded-md border border-dashed p-6 text-center">
+              <TicketIcon className="size-5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Todavía no hay cupones para canjear con puntos.</p>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {redeemable.map((c) => (

@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ClipboardListIcon } from "lucide-react";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { StoreHero } from "@/components/catalog/store-hero";
 import { StoreFooter } from "@/components/catalog/store-footer";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { RepeatOrderButton } from "@/components/catalog/repeat-order-button";
@@ -29,11 +31,19 @@ export default async function MisPedidosPage() {
         <h1 className="text-xl font-semibold">Tus pedidos</h1>
 
         {orders.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
-            <p className="text-muted-foreground">Todavía no hiciste ningún pedido</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Acá vas a ver tu historial de pedidos y vas a poder repetir uno con un toque.
-            </p>
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+              <ClipboardListIcon className="size-6 text-muted-foreground" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="font-medium">Todavía no hiciste ningún pedido</p>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Acá vas a ver tu historial de pedidos y vas a poder repetir uno con un toque.
+              </p>
+            </div>
+            <Button size="sm" render={<Link href="/" />} className="mt-2">
+              Ver el catálogo
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

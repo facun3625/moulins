@@ -21,19 +21,10 @@ export function UserRoleToggle({
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
-  const confirm = useConfirm();
 
   function toggle(checked: boolean) {
     const nextRole: Role = checked ? "ADMIN" : "CUSTOMER";
     startTransition(async () => {
-      if (nextRole === "ADMIN") {
-        const ok = await confirm({
-          title: "Hacer admin",
-          description: "Va a tener acceso completo al panel de administración.",
-          confirmLabel: "Hacer admin",
-        });
-        if (!ok) return;
-      }
       try {
         await setUserRole(id, nextRole);
         toast.success(nextRole === "ADMIN" ? "Ahora es admin" : "Ahora es cliente");
