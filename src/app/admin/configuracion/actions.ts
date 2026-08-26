@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { saveUploadedFile } from "@/lib/storage";
+import { sendMail } from "@/lib/mailer";
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Ingresá el nombre del negocio"),
@@ -151,4 +152,66 @@ export async function deleteAboutMedia(id: string) {
   await prisma.aboutMedia.delete({ where: { id } });
   revalidatePath("/sobre-nosotros");
   revalidatePath("/admin/configuracion");
+}
+
+// ---------- SMTP (mail de confirmación de pedido) ----------
+
+const smtpSchema = z.object({
+  host: z.string().min(1, "Ingresá el host"),
+  port: z.coerce.number().int().positive(),
+  user: z.string().min(1, "Ingresá el usuario"),
+  pass: z.string().optional(),
+  from: z.string().optional(),
+  secure: z.boolean(),
+});
+
+export async function updateSmtpSettings(formData: FormData) {
+  await requireAdmin();
+
+  const parsed = smtpSchema.parse({
+    host: formData.get("host"),
+    port: formData.get("port") || "587",
+    user: formData.get("user"),
+    pass: formData.get("pass") || undefined,
+    from: formData.get("from") || undefined,
+    secure: formData.get("secure") === "true",
+  });
+
+  // La contraseña se deja vacía en el form si ya hay una guardada — un
+  // campo vacío significa "no la cambies", no "borrala".
+  const existingPass = (await prisma.settings.findUnique({ where: { key: "smtp_pass" } }))?.value;
+  if (!parsed.pass && !existingPass) {
+    throw new Error("Ingresá la contraseña");
+  }
+
+  await Promise.all([
+    saveTextSetting(parsed.host, "smtp_host"),
+    saveTextSetting(String(parsed.port), "smtp_port"),
+    saveTextSetting(parsed.user, "smtp_user"),
+    saveTextSetting(parsed.from, "smtp_from"),
+    saveTextSetting(String(parsed.secure), "smtp_secure"),
+    parsed.pass ? saveTextSetting(parsed.pass, "smtp_pass") : Promise.resolve(),
+  ]);
+
+  revalidatePath("/admin/configuracion");
+}
+
+export async function removeSmtpSettings() {
+  await requireAdmin();
+  await prisma.settings.deleteMany({
+    where: { key: { in: ["smtp_host", "smtp_port", "smtp_user", "smtp_pass", "smtp_from", "smtp_secure"] } },
+  });
+  revalidatePath("/admin/configuracion");
+}
+
+export async function sendTestSmtpEmail() {
+  const { session } = await requireAdmin();
+  const to = session.user.email;
+  if (!to) throw new Error("Tu usuario admin no tiene email");
+
+  await sendMail({
+    to,
+    subject: "Mail de prueba",
+    html: "<p>Si estás leyendo esto, el SMTP de la tienda está bien configurado.</p>",
+  });
 }

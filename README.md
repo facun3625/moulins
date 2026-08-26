@@ -21,8 +21,9 @@ Ver `.env.example`. Resumen:
 - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` — login con Google. Agregar
   `https://<dominio>/api/auth/callback/google` como redirect URI autorizado
   en Google Cloud Console.
-- `SMTP_HOST/PORT/USER/PASS/FROM` — mail de confirmación de pedido. Si se
-  dejan vacías, la app sigue funcionando pero no manda mails.
+- SMTP (mail de confirmación de pedido) **no** se configura por env var —
+  se carga desde `/admin/configuracion` → pestaña "Mail". Sin configurar,
+  la app sigue funcionando pero no manda mails.
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — credenciales del admin que
   crea `prisma/seed.ts`. **Sin esto, el seed usa `admin@pedidos.local` /
   `admin123` por default — hay que fijar valores propios antes de correr el
@@ -35,10 +36,16 @@ contenedor Docker suelto, Nginx + Let's Encrypt adelante) — pasos genéricos
 en la guía interna del VPS. Puntos específicos de esta app:
 
 - Elegir el próximo puerto libre de app y de DB (ver tabla de la guía).
-- Migraciones: usar `npx prisma migrate deploy`, no `prisma db push` — esta
-  app ya tiene historial de migraciones en `prisma/migrations/`, y mezclar
-  `db push` con eso puede generar drift.
+- Migraciones: usar `npm run migrate:deploy` (= `prisma migrate deploy`), no
+  `prisma db push` — esta app ya tiene historial de migraciones en
+  `prisma/migrations/`, y mezclar `db push` con eso puede generar drift.
 - Correr el seed una sola vez, después de fijar `SEED_ADMIN_EMAIL` /
   `SEED_ADMIN_PASSWORD` en el `.env` del servidor.
 - Nginx: agregar `client_max_body_size 20M` (o más) al bloque — el checkout
-  sube comprobantes de transferencia como archivo.
+  sube comprobantes de transferencia como archivo, y ya subimos a 20mb el
+  límite de los Server Actions en `next.config.ts` para que no rebote antes.
+- Los archivos subidos (fotos de producto, comprobantes) quedan en
+  `public/uploads/` dentro del proyecto — no hace falta ningún volumen ni
+  configuración extra, con PM2 corriendo directo sobre el filesystem del
+  VPS ya persisten solos entre deploys (`git pull` nunca borra archivos sin
+  trackear).

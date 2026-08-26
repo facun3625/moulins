@@ -14,6 +14,7 @@ import {
   SettingsIcon,
   StoreIcon,
   SparklesIcon,
+  UsersIcon,
 } from "lucide-react";
 
 import { useStoreSettings } from "@/lib/store-settings-context";
@@ -28,6 +29,7 @@ const sections = [
   { href: "/admin/entrega", label: "Entrega", icon: TruckIcon },
   { href: "/admin/cupones", label: "Cupones", icon: TicketIcon },
   { href: "/admin/puntos", label: "Puntos", icon: SparklesIcon },
+  { href: "/admin/usuarios", label: "Usuarios", icon: UsersIcon },
   { href: "/admin/configuracion", label: "Configuración", icon: SettingsIcon },
 ];
 

@@ -45,3 +45,36 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     addToCartLabel: map.store_add_to_cart_label || DEFAULT_ADD_TO_CART_LABEL,
   };
 });
+
+// ---------- SMTP (mail de confirmación de pedido) ----------
+
+export type SmtpSettings = {
+  configured: boolean;
+  host: string | null;
+  port: number | null;
+  user: string | null;
+  pass: string | null;
+  from: string | null;
+  secure: boolean;
+};
+
+const SMTP_SETTINGS_KEYS = ["smtp_host", "smtp_port", "smtp_user", "smtp_pass", "smtp_from", "smtp_secure"] as const;
+
+export const getSmtpSettings = cache(async (): Promise<SmtpSettings> => {
+  const rows = await prisma.settings.findMany({
+    where: { key: { in: [...SMTP_SETTINGS_KEYS] } },
+  });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const host = map.smtp_host || null;
+  const user = map.smtp_user || null;
+  const pass = map.smtp_pass || null;
+  return {
+    configured: Boolean(host && user && pass),
+    host,
+    port: map.smtp_port ? Number(map.smtp_port) : null,
+    user,
+    pass,
+    from: map.smtp_from || null,
+    secure: map.smtp_secure === "true",
+  };
+});
