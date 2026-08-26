@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/require-admin";
 import { getActivePointsRule } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
+import { Badge } from "@/components/ui/badge";
 import { RateForm } from "./rate-form";
 
 export default async function AdminPointsPage() {
@@ -16,12 +17,17 @@ export default async function AdminPointsPage() {
       <h1 className="text-xl font-semibold">Puntos</h1>
 
       <div className="flex flex-col gap-3 rounded-lg border p-4">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">Tasa de acumulación</span>
-          <span className="text-xs text-muted-foreground">
-            Cuántos puntos suma un cliente logueado por cada $1000 de subtotal, al confirmarse el
-            pedido. Los invitados (sin cuenta) no acumulan.
-          </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">Tasa de acumulación</span>
+            <span className="text-xs text-muted-foreground">
+              Cuántos puntos suma un cliente logueado por cada $1000 de subtotal, al confirmarse el
+              pedido. Los invitados (sin cuenta) no acumulan.
+            </span>
+          </div>
+          <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+            {rule ? `Activa: ${Number(rule.pointsPerAmount) * 1000} pts / $1000` : "Sin tasa activa"}
+          </Badge>
         </div>
         <RateForm currentRate={Number(rule?.pointsPerAmount ?? 0)} />
       </div>
