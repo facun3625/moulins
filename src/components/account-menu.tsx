@@ -53,22 +53,22 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44 p-1.5">
         {session.user.role === "ADMIN" && (
-          <DropdownMenuItem render={<Link href="/admin" />} className="gap-2.5 py-2.5 text-[0.95rem]">
+          <DropdownMenuItem render={<Link href="/admin" />} className="gap-2 py-1.5 text-sm">
             <span className="size-1 shrink-0 rounded-full bg-current" />
             Admin
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem render={<Link href="/pedidos" />} className="gap-2.5 py-2.5 text-[0.95rem]">
+        <DropdownMenuItem render={<Link href="/pedidos" />} className="gap-2 py-1.5 text-sm">
           <span className="size-1 shrink-0 rounded-full bg-current" />
           Mis pedidos
         </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href="/puntos" />} className="gap-2.5 py-2.5 text-[0.95rem]">
+        <DropdownMenuItem render={<Link href="/puntos" />} className="gap-2 py-1.5 text-sm">
           <span className="size-1 shrink-0 rounded-full bg-current" />
           Mis puntos
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          className="gap-2.5 py-2.5 text-[0.95rem] text-muted-foreground"
+          className="gap-2 py-1.5 text-sm text-muted-foreground"
           onClick={() => signOut()}
         >
           <span className="size-1 shrink-0 rounded-full bg-current" />

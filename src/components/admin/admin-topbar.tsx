@@ -138,7 +138,7 @@ export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="gap-2.5 py-2 text-sm text-muted-foreground"
+              className="gap-2 py-1.5 text-sm text-muted-foreground"
               onClick={() => signOut()}
             >
               <span className="size-1 shrink-0 rounded-full bg-current" />
