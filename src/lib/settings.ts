@@ -5,6 +5,7 @@ export type StoreSettings = {
   storeName: string;
   logoUrl: string | null;
   coverUrl: string | null;
+  faviconUrl: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
@@ -20,6 +21,7 @@ const SETTINGS_KEYS = [
   "store_name",
   "store_logo_url",
   "store_cover_url",
+  "store_favicon_url",
   "store_address",
   "store_phone",
   "store_email",
@@ -37,6 +39,7 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     storeName: map.store_name || DEFAULT_STORE_NAME,
     logoUrl: map.store_logo_url || null,
     coverUrl: map.store_cover_url || null,
+    faviconUrl: map.store_favicon_url || null,
     address: map.store_address || null,
     phone: map.store_phone || null,
     email: map.store_email || null,

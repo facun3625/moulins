@@ -74,11 +74,12 @@ export async function updateStoreSettings(formData: FormData) {
 
   await saveImageSetting(formData.get("logo") as File | null, "store_logo_url");
   await saveImageSetting(formData.get("cover") as File | null, "store_cover_url");
+  await saveImageSetting(formData.get("favicon") as File | null, "store_favicon_url");
 
   revalidatePath("/", "layout");
 }
 
-export async function removeStoreImage(key: "store_logo_url" | "store_cover_url") {
+export async function removeStoreImage(key: "store_logo_url" | "store_cover_url" | "store_favicon_url") {
   await requireAdmin();
   await prisma.settings.deleteMany({ where: { key } });
   revalidatePath("/", "layout");

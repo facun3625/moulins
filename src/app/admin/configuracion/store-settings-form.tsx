@@ -14,6 +14,7 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettings }) {
   const [pending, startTransition] = useTransition();
   const [logoPreview, setLogoPreview] = useState<string | null>(settings.logoUrl);
   const [coverPreview, setCoverPreview] = useState<string | null>(settings.coverUrl);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(settings.faviconUrl);
 
   return (
     <form
@@ -105,6 +106,23 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettings }) {
                 await removeStoreImage("store_cover_url");
                 setCoverPreview(null);
                 toast.success("Portada eliminada");
+              }
+            : undefined
+        }
+      />
+
+      <ImageField
+        label="Favicon (ícono de la pestaña del navegador)"
+        name="favicon"
+        shape="circle"
+        preview={faviconPreview}
+        onPreviewChange={setFaviconPreview}
+        onRemove={
+          settings.faviconUrl
+            ? async () => {
+                await removeStoreImage("store_favicon_url");
+                setFaviconPreview(null);
+                toast.success("Favicon eliminado");
               }
             : undefined
         }

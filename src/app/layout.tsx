@@ -23,10 +23,11 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { storeName } = await getStoreSettings();
+  const { storeName, faviconUrl } = await getStoreSettings();
   return {
     title: storeName,
     description: `Encargá tu comida en ${storeName}`,
+    icons: faviconUrl ? { icon: faviconUrl } : undefined,
   };
 }
 
