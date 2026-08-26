@@ -176,7 +176,7 @@ function ImageField({
               alt={label}
               width={shape === "circle" ? 64 : 400}
               height={shape === "circle" ? 64 : 175}
-              className={shape === "circle" ? "size-full object-contain p-1.5" : "size-full object-cover"}
+              className={shape === "circle" ? "size-full object-contain" : "size-full object-cover"}
             />
           )}
         </div>

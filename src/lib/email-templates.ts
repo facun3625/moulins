@@ -39,3 +39,18 @@ export function orderConfirmationEmail({
     </div>
   `;
 }
+
+export function passwordResetEmail({ storeName, resetUrl }: { storeName: string; resetUrl: string }) {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
+      <h1 style="font-size: 20px;">Restablecer tu contraseña</h1>
+      <p>Alguien pidió cambiar la contraseña de tu cuenta en <strong>${escapeHtml(storeName)}</strong>. Si fuiste vos, entrá acá para elegir una nueva:</p>
+      <p style="margin: 24px 0;">
+        <a href="${resetUrl}" style="background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; display: inline-block;">
+          Elegir nueva contraseña
+        </a>
+      </p>
+      <p style="color: #666; font-size: 13px;">El link vence en 1 hora. Si no fuiste vos, podés ignorar este mail.</p>
+    </div>
+  `;
+}

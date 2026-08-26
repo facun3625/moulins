@@ -32,7 +32,7 @@ function LogoBadge({
           alt={storeName}
           width={imageSize}
           height={imageSize}
-          className="size-full object-contain p-1.5"
+          className="size-full object-contain"
         />
       ) : (
         <span className="font-bold text-foreground">{storeName.charAt(0)}</span>

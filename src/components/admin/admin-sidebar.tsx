@@ -42,7 +42,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex items-center gap-2 px-4 py-4">
         <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sidebar-accent">
           {logoUrl ? (
-            <Image src={logoUrl} alt={storeName} width={36} height={36} className="size-full object-contain p-0.5" />
+            <Image src={logoUrl} alt={storeName} width={36} height={36} className="size-full object-contain" />
           ) : (
             <StoreIcon className="size-4 text-sidebar-accent-foreground/70" />
           )}

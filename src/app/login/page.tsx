@@ -12,7 +12,7 @@ export default async function LoginPage() {
       <div className="flex flex-col items-center gap-3 text-center">
         {logoUrl && (
           <div className="flex size-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-border">
-            <Image src={logoUrl} alt={storeName} width={64} height={64} className="size-full object-contain p-1.5" />
+            <Image src={logoUrl} alt={storeName} width={64} height={64} className="size-full object-contain" />
           </div>
         )}
         <div className="flex flex-col items-center gap-1">
