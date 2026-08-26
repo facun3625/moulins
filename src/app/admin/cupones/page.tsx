@@ -3,22 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/format";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CouponToggle, CouponDeleteButton } from "./coupon-row-actions";
-
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
-
-function formatDiscount(type: "PERCENT" | "FIXED", value: number) {
-  return type === "PERCENT" ? `${value}%` : formatPrice(value);
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CouponsTable } from "./coupons-table";
 
 export default async function CouponsPage() {
   await requireAdmin();
@@ -28,56 +14,53 @@ export default async function CouponsPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const normales = coupons.filter((c) => c.pointsCost === 0);
+  const porPuntos = coupons.filter((c) => c.pointsCost > 0);
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Cupones</h1>
-        <Button render={<Link href="/admin/cupones/nuevo" />} size="sm">
-          Nuevo
-        </Button>
-      </div>
+      <h1 className="text-xl font-semibold">Cupones</h1>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Código</TableHead>
-            <TableHead>Descuento</TableHead>
-            <TableHead>Puntos</TableHead>
-            <TableHead>Usos</TableHead>
-            <TableHead>Vence</TableHead>
-            <TableHead>Activo</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {coupons.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell className="font-medium">{c.code}</TableCell>
-              <TableCell>{formatDiscount(c.discountType, Number(c.discountValue))}</TableCell>
-              <TableCell>{c.pointsCost > 0 ? `${c.pointsCost} pts` : "—"}</TableCell>
-              <TableCell>
-                {c._count.redemptions}
-                {c.usageLimit ? ` / ${c.usageLimit}` : ""}
-              </TableCell>
-              <TableCell>{c.expiresAt ? dateFormatter.format(c.expiresAt) : "—"}</TableCell>
-              <TableCell>
-                <CouponToggle id={c.id} enabled={c.active} />
-              </TableCell>
-              <TableCell className="text-right">
-                <CouponDeleteButton id={c.id} />
-              </TableCell>
-            </TableRow>
-          ))}
+      <Tabs defaultValue="normales">
+        <TabsList className="w-full max-w-sm">
+          <TabsTrigger value="normales" className="flex-1">
+            Cupones
+          </TabsTrigger>
+          <TabsTrigger value="puntos" className="flex-1">
+            Por puntos
+          </TabsTrigger>
+        </TabsList>
 
-          {coupons.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
-                Todavía no creaste ningún cupón.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+        <TabsContent value="normales" className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">Se usan escribiendo el código en el checkout.</p>
+            <Button render={<Link href="/admin/cupones/nuevo" />} size="sm">
+              Nuevo cupón
+            </Button>
+          </div>
+          <CouponsTable
+            coupons={normales}
+            showPointsColumn={false}
+            emptyLabel="Todavía no creaste ningún cupón."
+          />
+        </TabsContent>
+
+        <TabsContent value="puntos" className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              El cliente los canjea con puntos desde &quot;Mis puntos&quot; — no se usan tipeando el código.
+            </p>
+            <Button render={<Link href="/admin/cupones/nuevo-puntos" />} size="sm">
+              Nuevo cupón por puntos
+            </Button>
+          </div>
+          <CouponsTable
+            coupons={porPuntos}
+            showPointsColumn
+            emptyLabel="Todavía no creaste ningún cupón por puntos."
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

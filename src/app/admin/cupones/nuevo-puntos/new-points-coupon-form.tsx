@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { createCoupon } from "../actions";
 
-export function NewCouponForm() {
+export function NewPointsCouponForm() {
   const [discountType, setDiscountType] = useState<"PERCENT" | "FIXED">("PERCENT");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -32,8 +32,20 @@ export function NewCouponForm() {
       className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-2">
-        <Label htmlFor="code">Código</Label>
-        <Input id="code" name="code" placeholder="BIENVENIDO10" required className="uppercase" />
+        <Label htmlFor="pointsCost">Costo en puntos</Label>
+        <Input id="pointsCost" name="pointsCost" type="number" min="1" required />
+        <p className="text-xs text-muted-foreground">
+          Cuántos puntos le descuenta a un cliente canjearlo desde &quot;Mis puntos&quot;. No se usa
+          tipeando un código en el checkout.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="code">Código interno</Label>
+        <Input id="code" name="code" placeholder="PREMIO10" required className="uppercase" />
+        <p className="text-xs text-muted-foreground">
+          Solo para identificarlo acá en el panel y en el detalle de los pedidos.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">
