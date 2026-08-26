@@ -10,17 +10,33 @@ import type { DeliveryFeeConfig } from "@/app/admin/entrega/page";
 export default async function CheckoutPage() {
   const session = await auth();
 
-  const [paymentMethods, fulfillmentMethods, user, storeSettings, previousOrderCount] = await Promise.all([
-    prisma.paymentMethodConfig.findMany({ where: { enabled: true } }),
-    prisma.fulfillmentMethodConfig.findMany({ where: { enabled: true } }),
-    session?.user ? prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }) : null,
-    getStoreSettings(),
-    session?.user
-      ? prisma.order.count({
-          where: { userId: session.user.id, status: { not: "CANCELLED" } },
-        })
-      : 0,
-  ]);
+  const [paymentMethods, fulfillmentMethods, user, storeSettings, previousOrderCount, pendingRedemptions] =
+    await Promise.all([
+      prisma.paymentMethodConfig.findMany({ where: { enabled: true } }),
+      prisma.fulfillmentMethodConfig.findMany({ where: { enabled: true } }),
+      session?.user ? prisma.user.findUniqueOrThrow({ where: { id: session.user.id } }) : null,
+      getStoreSettings(),
+      session?.user
+        ? prisma.order.count({
+            where: { userId: session.user.id, status: { not: "CANCELLED" } },
+          })
+        : 0,
+      session?.user
+        ? prisma.couponRedemption.findMany({
+            where: { userId: session.user.id, orderId: null },
+            include: { coupon: true },
+          })
+        : [],
+    ]);
+
+  const now = new Date();
+  const availableCoupons = pendingRedemptions
+    .filter((r) => r.coupon.active && (!r.coupon.expiresAt || r.coupon.expiresAt > now))
+    .map((r) => ({
+      code: r.coupon.code,
+      discountType: r.coupon.discountType,
+      discountValue: Number(r.coupon.discountValue),
+    }));
 
   const transferConfig =
     (paymentMethods.find((m) => m.type === "TRANSFER")?.config as TransferConfig | null) ?? null;
@@ -31,7 +47,7 @@ export default async function CheckoutPage() {
   return (
     <div className="flex flex-1 flex-col">
       <StoreHero />
-      <div className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col rounded-t-3xl bg-background lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-[1440px] lg:shadow-2xl">
+      <div className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col rounded-t-3xl bg-background lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-5xl lg:shadow-2xl">
         <CheckoutForm
           paymentMethods={paymentMethods.map((m) => ({
             type: m.type,
@@ -44,6 +60,7 @@ export default async function CheckoutPage() {
           deliveryFee={deliveryFee}
           storeAddress={storeSettings.address}
           profile={user ? { name: user.name, email: user.email, phone: user.phone, address: user.address } : null}
+          availableCoupons={availableCoupons}
         />
       </div>
       <StoreFooter />

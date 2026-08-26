@@ -25,6 +25,16 @@ type Profile = {
   address: string | null;
 };
 
+type AvailableCoupon = {
+  code: string;
+  discountType: "PERCENT" | "FIXED";
+  discountValue: number;
+};
+
+function formatCouponDiscount(coupon: AvailableCoupon) {
+  return coupon.discountType === "PERCENT" ? `${coupon.discountValue}%` : formatPrice(coupon.discountValue);
+}
+
 type PickupSlot = { id: string; label: string };
 
 function StepCard({
@@ -100,6 +110,7 @@ export function CheckoutForm({
   deliveryFee,
   storeAddress,
   profile,
+  availableCoupons,
 }: {
   paymentMethods: PaymentMethodOption[];
   previousOrderCount: number;
@@ -108,6 +119,7 @@ export function CheckoutForm({
   deliveryFee: number;
   storeAddress: string | null;
   profile: Profile | null;
+  availableCoupons: AvailableCoupon[];
 }) {
   const router = useRouter();
   const { cart, itemCount, subtotal, clearCart } = useCart();
@@ -214,11 +226,11 @@ export function CheckoutForm({
   const couponDiscount = appliedCoupon?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + appliedDeliveryFee - couponDiscount);
 
-  function applyCoupon() {
-    if (!couponCode.trim()) return;
+  function applyCoupon(code: string = couponCode) {
+    if (!code.trim()) return;
     startCouponTransition(async () => {
       try {
-        const result = await validateCoupon(couponCode, subtotal);
+        const result = await validateCoupon(code, subtotal);
         setAppliedCoupon({ code: result.code, discountAmount: result.discountAmount });
         toast.success(`Cupón ${result.code} aplicado`);
       } catch (e) {
@@ -258,7 +270,7 @@ export function CheckoutForm({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start">
+    <main className="mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start">
       <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:w-80 lg:shrink-0">
         <h1 className="text-xl font-semibold">Confirmar pedido</h1>
         <div className="flex flex-col gap-2 rounded-2xl border p-4">
@@ -302,7 +314,29 @@ export function CheckoutForm({
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <>
+              {availableCoupons.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {availableCoupons.map((c) => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      disabled={couponPending}
+                      onClick={() => applyCoupon(c.code)}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-primary bg-primary/5 px-3 py-2.5 text-left disabled:opacity-60"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="font-medium">{c.code}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatCouponDiscount(c)} de descuento — ya la tenés canjeada
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold text-primary">Aplicar</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
               <Input
                 id="couponCode"
                 value={couponCode}
@@ -314,11 +348,12 @@ export function CheckoutForm({
                 type="button"
                 variant="outline"
                 disabled={couponPending || !couponCode.trim()}
-                onClick={applyCoupon}
+                onClick={() => applyCoupon()}
               >
                 Aplicar
               </Button>
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>

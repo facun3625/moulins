@@ -66,6 +66,10 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
           <span className="size-1 shrink-0 rounded-full bg-current" />
           Mis puntos
         </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/perfil" />} className="gap-2 py-1.5 text-sm">
+          <span className="size-1 shrink-0 rounded-full bg-current" />
+          Mi perfil
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="gap-2 py-1.5 text-sm text-muted-foreground"
