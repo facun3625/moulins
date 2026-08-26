@@ -45,8 +45,8 @@ export default async function PuntosPage() {
   return (
     <div className="flex flex-1 flex-col">
       <StoreHero />
-      <main className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col gap-6 rounded-t-3xl bg-background px-4 py-6 lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-4xl lg:shadow-2xl">
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+      <main className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col gap-6 rounded-t-3xl bg-background px-4 py-6 lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-[1440px] lg:px-8 lg:shadow-2xl">
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-12">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col items-center gap-2 rounded-2xl border bg-muted/40 p-6 text-center">
               <div className="flex size-11 items-center justify-center rounded-full bg-primary/10">

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatPrice } from "@/lib/format";
 import {
   Table,
@@ -43,7 +45,11 @@ export function CouponsTable({
       <TableBody>
         {coupons.map((c) => (
           <TableRow key={c.id}>
-            <TableCell className="font-medium">{c.code}</TableCell>
+            <TableCell className="font-medium">
+              <Link href={`/admin/cupones/${c.id}`} className="hover:text-primary">
+                {c.code}
+              </Link>
+            </TableCell>
             <TableCell>{formatDiscount(c.discountType, Number(c.discountValue))}</TableCell>
             {showPointsColumn && <TableCell>{c.pointsCost} pts</TableCell>}
             <TableCell>

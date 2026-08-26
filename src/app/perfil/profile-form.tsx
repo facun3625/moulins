@@ -56,24 +56,24 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8 lg:grid lg:grid-cols-[240px_1fr] lg:items-start lg:gap-12">
       <div className="flex flex-col items-center gap-3">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-4 ring-background shadow-md"
+          className="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-4 ring-background shadow-md lg:size-32"
           aria-label="Cambiar foto de perfil"
         >
           {preview ? (
-            <Image src={preview} alt={name} width={96} height={96} className="size-full object-cover" unoptimized={preview.startsWith("blob:")} />
+            <Image src={preview} alt={name} width={128} height={128} className="size-full object-cover" unoptimized={preview.startsWith("blob:")} />
           ) : (
-            <UserIcon className="size-10 text-muted-foreground" />
+            <UserIcon className="size-10 text-muted-foreground lg:size-14" />
           )}
           <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
             <CameraIcon className="size-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
           </span>
-          <span className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
-            <CameraIcon className="size-3.5" />
+          <span className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background lg:size-9 lg:border-2">
+            <CameraIcon className="size-3.5 lg:size-4" />
           </span>
         </button>
         <input
@@ -83,22 +83,22 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
           className="hidden"
           onChange={handleFileChange}
         />
-        <p className="text-xs text-muted-foreground">Tocá la foto para cambiarla</p>
+        <p className="text-xs text-muted-foreground text-center">Tocá la foto para cambiarla</p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="profile-name">Nombre</Label>
-          <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="profile-email">Email</Label>
-          <Input id="profile-email" value={user.email} disabled />
-          <p className="text-xs text-muted-foreground">El email no se puede cambiar — es tu usuario para ingresar.</p>
-        </div>
-
+      <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="profile-name">Nombre</Label>
+            <Input id="profile-name" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="profile-email">Email</Label>
+            <Input id="profile-email" value={user.email} disabled />
+            <p className="text-[0.7rem] text-muted-foreground">No se puede cambiar — es tu usuario.</p>
+          </div>
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="profile-phone">Teléfono</Label>
             <Input id="profile-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -108,14 +108,14 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
             <Input id="profile-address" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
         </div>
-        <p className="-mt-2 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Se usan para prellenar el checkout — no hace falta volver a escribirlos en cada pedido.
         </p>
-      </div>
 
-      <Button type="submit" disabled={pending} className="self-start">
-        {pending ? "Guardando..." : "Guardar cambios"}
-      </Button>
+        <Button type="submit" disabled={pending} className="self-start mt-2">
+          {pending ? "Guardando..." : "Guardar cambios"}
+        </Button>
+      </div>
     </form>
   );
 }
