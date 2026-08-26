@@ -55,11 +55,23 @@ function StepCard({
   children: React.ReactNode;
 }) {
   const clickable = reached && !active;
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (active && cardRef.current) {
+      // Pequeño delay para dejar que el paso se expanda y calcule su alto
+      const timer = setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [active]);
 
   return (
     <div
+      ref={cardRef}
       className={cn(
-        "rounded-2xl border p-4 transition-colors",
+        "rounded-2xl border p-4 transition-colors scroll-mt-4",
         active ? "border-primary" : "border-border",
         clickable && "cursor-pointer hover:border-primary/50 hover:bg-accent/40",
       )}
@@ -157,7 +169,7 @@ export function CheckoutForm({
 
   if (itemCount === 0) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
         <h1 className="text-xl font-semibold">Tu carrito está vacío</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
           Agregá productos al pedido antes de pasar por caja.
@@ -165,13 +177,13 @@ export function CheckoutForm({
         <Button render={<Link href="/" />} variant="outline">
           Ver catálogo
         </Button>
-      </main>
+      </div>
     );
   }
 
   if (paymentMethods.length === 0 || availableFulfillmentTypes.length === 0) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
         <h1 className="text-xl font-semibold">El checkout no está disponible todavía</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
           Todavía no configuramos medios de pago o de entrega. Contactanos directamente para
@@ -180,7 +192,7 @@ export function CheckoutForm({
         <Button render={<Link href="/carrito" />} variant="outline">
           Volver al pedido
         </Button>
-      </main>
+      </div>
     );
   }
 
@@ -262,7 +274,7 @@ export function CheckoutForm({
       try {
         const { orderId } = await placeOrder(formData);
         clearCart();
-        router.push(`/pedidos/${orderId}`);
+        router.push(`/pedidos/${orderId}?success=1`);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "No se pudo confirmar el pedido");
       }
@@ -270,8 +282,8 @@ export function CheckoutForm({
   }
 
   return (
-    <main className="mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start">
-      <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:w-80 lg:shrink-0">
+    <div className="mx-auto flex w-full flex-1 flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+      <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:w-[320px] lg:shrink-0">
         <h1 className="text-xl font-semibold">Confirmar pedido</h1>
         <div className="flex flex-col gap-2 rounded-2xl border p-4">
           {cart.items.map((item) => (
@@ -323,7 +335,7 @@ export function CheckoutForm({
                       type="button"
                       disabled={couponPending}
                       onClick={() => applyCoupon(c.code)}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-primary bg-primary/5 px-3 py-2.5 text-left disabled:opacity-60"
+                      className="flex items-center justify-between gap-2 rounded-xl border border-primary/30 bg-background hover:bg-muted/30 px-3 py-2.5 text-left disabled:opacity-60 transition-colors"
                     >
                       <span className="flex min-w-0 flex-col">
                         <span className="font-medium">{c.code}</span>
@@ -422,7 +434,12 @@ export function CheckoutForm({
             </div>
           )}
 
-          <Button type="button" onClick={goToStep2} className="bg-foreground text-background hover:bg-foreground/80">
+          <Button 
+            type="button" 
+            onClick={goToStep2} 
+            disabled={!fulfillmentType || (fulfillmentType === "PICKUP" && pickupSlots.length > 0 && !pickupSlotId)}
+            className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
             Continuar
           </Button>
         </StepCard>
@@ -508,7 +525,8 @@ export function CheckoutForm({
             <Button
               type="button"
               onClick={goToStep3}
-              className="flex-1 bg-foreground text-background hover:bg-foreground/80"
+              disabled={!method || (method === "TRANSFER" && !proofFileName)}
+              className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               Continuar
             </Button>
@@ -597,6 +615,6 @@ export function CheckoutForm({
           </div>
         </StepCard>
       </form>
-    </main>
+    </div>
   );
 }

@@ -19,12 +19,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminThemeRoot fontFamily={montserrat.style.fontFamily}>
       <ConfirmProvider>
         <PromptProvider>
-          <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-sidebar-border print:hidden lg:flex lg:flex-col">
+          <aside className="hidden bg-sidebar h-full overflow-y-auto w-64 shrink-0 border-r border-sidebar-border print:hidden lg:flex lg:flex-col">
             <AdminSidebar />
           </aside>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden">
             <AdminTopbar storeOpen={storeConfig.storeOpen} />
-            <main className="flex-1 px-4 py-6 lg:px-8 print:p-0">{children}</main>
+            <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 print:p-0">{children}</main>
           </div>
         </PromptProvider>
       </ConfirmProvider>

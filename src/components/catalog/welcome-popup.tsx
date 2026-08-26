@@ -24,17 +24,20 @@ export function WelcomePopup({
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (frequency === "ALWAYS") {
-      setOpen(true);
-      return;
-    }
-    const storage = frequency === "SESSION" ? window.sessionStorage : window.localStorage;
-    const key = `popup-seen-${version}`;
-    try {
-      if (!storage.getItem(key)) setOpen(true);
-    } catch {
-      setOpen(true);
-    }
+    const timer = setTimeout(() => {
+      if (frequency === "ALWAYS") {
+        setOpen(true);
+        return;
+      }
+      const storage = frequency === "SESSION" ? window.sessionStorage : window.localStorage;
+      const key = `popup-seen-${version}`;
+      try {
+        if (!storage.getItem(key)) setOpen(true);
+      } catch {
+        setOpen(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [frequency, version]);
 
   function handleClose() {

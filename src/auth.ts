@@ -11,6 +11,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  callbacks: {
+    ...authConfig.callbacks,
+    session: async ({ session, token }) => {
+      if (session.user) {
+        session.user.id = token.sub as string;
+        session.user.role = token.role ?? "CUSTOMER";
+        
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { name: true, image: true }
+          });
+          if (dbUser) {
+            session.user.name = dbUser.name;
+            session.user.image = dbUser.image;
+          } else {
+            if (token.picture) session.user.image = token.picture;
+            if (token.name) session.user.name = token.name;
+          }
+        } catch (err) {
+          // Fallback silencioso
+          if (token.picture) session.user.image = token.picture;
+          if (token.name) session.user.name = token.name;
+        }
+      }
+      return session;
+    }
+  },
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,

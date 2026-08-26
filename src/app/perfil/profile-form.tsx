@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { CameraIcon, UserIcon } from "lucide-react";
@@ -8,6 +8,7 @@ import { CameraIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSession } from "next-auth/react";
 import { updateProfile } from "./actions";
 
 type ProfileUser = {
@@ -19,6 +20,7 @@ type ProfileUser = {
 };
 
 export function ProfileForm({ user }: { user: ProfileUser }) {
+  const { data: session, update } = useSession();
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone);
   const [address, setAddress] = useState(user.address);
@@ -26,6 +28,14 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
   const [file, setFile] = useState<File | null>(null);
   const [pending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (session?.user) {
+      if (session.user.image !== user.image || session.user.name !== user.name) {
+        update({ name: user.name, image: user.image });
+      }
+    }
+  }, [session?.user?.image, session?.user?.name, user.image, user.name, update]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -47,7 +57,9 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
         formData.set("phone", phone);
         formData.set("address", address);
         if (file) formData.set("photo", file);
-        await updateProfile(formData);
+        const res = await updateProfile(formData);
+        await update({ name, image: res?.image ?? user.image });
+        setFile(null);
         toast.success("Perfil actualizado");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo guardar");
@@ -58,24 +70,26 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8 lg:grid lg:grid-cols-[240px_1fr] lg:items-start lg:gap-12">
       <div className="flex flex-col items-center gap-3">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-4 ring-background shadow-md lg:size-32"
-          aria-label="Cambiar foto de perfil"
-        >
-          {preview ? (
-            <Image src={preview} alt={name} width={128} height={128} className="size-full object-cover" unoptimized={preview.startsWith("blob:")} />
-          ) : (
-            <UserIcon className="size-10 text-muted-foreground lg:size-14" />
-          )}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
-            <CameraIcon className="size-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-          </span>
-          <span className="absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background lg:size-9 lg:border-2">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="group relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-4 ring-background shadow-md lg:size-32"
+            aria-label="Cambiar foto de perfil"
+          >
+            {preview ? (
+              <Image src={preview} alt={name} width={128} height={128} className="size-full object-cover" unoptimized={preview.startsWith("blob:")} />
+            ) : (
+              <UserIcon className="size-10 text-muted-foreground lg:size-14" />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
+              <CameraIcon className="size-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+            </span>
+          </button>
+          <span className="pointer-events-none absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background lg:size-9 lg:ring-4">
             <CameraIcon className="size-3.5 lg:size-4" />
           </span>
-        </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -112,7 +126,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
           Se usan para prellenar el checkout — no hace falta volver a escribirlos en cada pedido.
         </p>
 
-        <Button type="submit" disabled={pending} className="self-start mt-2">
+        <Button type="submit" disabled={pending || (name === user.name && phone === user.phone && address === user.address && !file)} className="self-start mt-2">
           {pending ? "Guardando..." : "Guardar cambios"}
         </Button>
       </div>

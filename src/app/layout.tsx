@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { WhatsAppWidget } from "@/components/whatsapp-widget";
+import { FloatingCartButton } from "@/components/floating-cart-button";
 import { StoreSettingsProvider } from "@/lib/store-settings-context";
 import { getStoreSettings } from "@/lib/settings";
 
@@ -45,7 +47,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={htmlClassName}>
       <body className="min-h-full flex flex-col">
         <StoreSettingsProvider value={storeSettings}>
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            <WhatsAppWidget />
+            <FloatingCartButton />
+          </Providers>
         </StoreSettingsProvider>
       </body>
     </html>

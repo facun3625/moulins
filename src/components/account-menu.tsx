@@ -62,7 +62,7 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
           />
         }
       >
-        <Avatar size="sm">
+        <Avatar className="size-full">
           {session.user.image && <AvatarImage src={session.user.image} alt="" />}
           <AvatarFallback className="bg-primary text-xs text-primary-foreground">
             {initials(session.user.name)}

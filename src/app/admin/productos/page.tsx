@@ -8,12 +8,25 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryManager } from "./category-manager";
 import { StockGroupManager } from "./stock-group-manager";
 import { SoldOutTodayToggle } from "./sold-out-today-toggle";
+import { ProductActiveToggle } from "./product-active-toggle";
+import { ProductsFilterBar } from "./products-filter-bar";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string }>;
+}) {
   await requireAdmin();
+  const params = await searchParams;
+
+  const where = {
+    ...(params.category ? { categoryId: params.category } : {}),
+    ...(params.q ? { name: { contains: params.q, mode: "insensitive" as const } } : {}),
+  };
 
   const [products, categories, stockGroups, storeConfig] = await Promise.all([
     prisma.product.findMany({
+      where,
       include: {
         category: true,
         stockGroup: { include: { _count: { select: { products: true } } } },
@@ -55,6 +68,10 @@ export default async function ProductsPage() {
           Primero cargá al menos un tipo de producto (categoría) desde el botón
           &quot;Categorías&quot;.
         </p>
+      )}
+
+      {categories.length > 0 && (
+        <ProductsFilterBar categories={categories.map(c => ({ id: c.id, name: c.name }))} />
       )}
 
       <div className="flex flex-col gap-3">
@@ -102,9 +119,12 @@ export default async function ProductsPage() {
                   {product.stockGroup._count.products > 1 && ` · grupo: ${product.stockGroup.name}`}
                 </span>
               </div>
-              {storeConfig.orderingMode === "WEEKLY_HOURS" && (
-                <SoldOutTodayToggle productId={product.id} soldOutToday={product.soldOutToday} />
-              )}
+              <div className="flex flex-col items-end gap-2">
+                <ProductActiveToggle productId={product.id} active={product.active} />
+                {storeConfig.orderingMode === "WEEKLY_HOURS" && (
+                  <SoldOutTodayToggle productId={product.id} soldOutToday={product.soldOutToday} />
+                )}
+              </div>
               <div className="shrink-0 text-right text-sm font-medium">
                 {minPrice !== null
                   ? minPrice === maxPrice
@@ -117,8 +137,8 @@ export default async function ProductsPage() {
         })}
 
         {products.length === 0 && categories.length > 0 && (
-          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Todavía no cargaste productos.
+          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground text-center">
+            {params.q || params.category ? "No hay productos que coincidan con la búsqueda." : "Todavía no cargaste productos."}
           </p>
         )}
       </div>

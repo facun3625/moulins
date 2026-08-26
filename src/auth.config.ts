@@ -30,9 +30,13 @@ export default {
     signIn: "/login",
   },
   callbacks: {
-    jwt: ({ token, user }) => {
+    jwt: ({ token, user, trigger, session }) => {
       if (user) {
         token.role = (user as { role?: Role }).role ?? "CUSTOMER";
+      }
+      if (trigger === "update" && session) {
+        if (session.name) token.name = session.name;
+        if (session.image) token.picture = session.image;
       }
       return token;
     },
@@ -40,6 +44,8 @@ export default {
       if (session.user) {
         session.user.id = token.sub as string;
         session.user.role = token.role ?? "CUSTOMER";
+        if (token.picture) session.user.image = token.picture;
+        if (token.name) session.user.name = token.name;
       }
       return session;
     },

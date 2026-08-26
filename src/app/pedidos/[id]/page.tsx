@@ -9,15 +9,20 @@ import { StoreFooter } from "@/components/catalog/store-footer";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { FULFILLMENT_TYPE_LABELS, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
+import { RepeatOrderButton } from "@/components/catalog/repeat-order-button";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
+  const { success } = await searchParams;
+  const isNewOrder = success === "1";
   const session = await auth();
 
   const order = await prisma.order.findUnique({
@@ -45,7 +50,7 @@ export default async function OrderDetailPage({
   }
 
   const headline =
-    order.status === "CANCELLED" ? "Pedido cancelado" : `¡Pedido ${ORDER_STATUS_LABELS[order.status].toLowerCase()}!`;
+    order.status === "CANCELLED" ? "Pedido cancelado" : isNewOrder ? `¡Pedido ${ORDER_STATUS_LABELS[order.status].toLowerCase()}!` : "Detalle del pedido";
 
   return (
     <div className="flex flex-1 flex-col">
@@ -178,13 +183,24 @@ export default async function OrderDetailPage({
           </div>
 
           <div className="flex gap-2">
-            <Button size="lg" variant="outline" className="flex-1" render={<Link href="/" />}>
-              Volver a la tienda
-            </Button>
-            {session?.user && order.userId === session.user.id && (
-              <Button size="lg" className="flex-1" render={<Link href="/pedidos" />}>
-                Ver mis pedidos
-              </Button>
+            {isNewOrder ? (
+              <>
+                <Button size="lg" variant="outline" className="flex-1" render={<Link href="/" />}>
+                  Volver a la tienda
+                </Button>
+                {session?.user && order.userId === session.user.id && (
+                  <Button size="lg" className="flex-1" render={<Link href="/pedidos" />}>
+                    Ver mis pedidos
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button size="lg" variant="outline" className="flex-1" render={<Link href="/pedidos" />}>
+                  Volver a mis pedidos
+                </Button>
+                <RepeatOrderButton size="lg" variant="default" orderId={order.id} className="flex-1" />
+              </>
             )}
           </div>
         </main>

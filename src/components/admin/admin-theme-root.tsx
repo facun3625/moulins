@@ -11,7 +11,7 @@ const AdminThemeContext = createContext<{
   toggleTheme: () => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
 }>({
-  theme: "light",
+  theme: "dark",
   toggleTheme: () => {},
   containerRef: { current: null },
 });
@@ -27,7 +27,7 @@ export function AdminThemeRoot({
   children: React.ReactNode;
   fontFamily: string;
 }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +35,7 @@ export function AdminThemeRoot({
     <AdminThemeContext.Provider value={{ theme, toggleTheme, containerRef }}>
       <div
         ref={containerRef}
-        className={cn("flex flex-1 bg-background text-foreground", theme === "dark" && "dark")}
+        className={cn("flex flex-1 h-[100dvh] overflow-hidden bg-background text-foreground", theme === "dark" && "dark")}
         style={
           {
             "--font-sans": fontFamily,

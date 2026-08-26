@@ -47,7 +47,7 @@ export default async function CheckoutPage() {
   return (
     <div className="flex flex-1 flex-col">
       <StoreHero />
-      <div className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col rounded-t-3xl bg-background lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-5xl lg:shadow-2xl">
+      <main className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col gap-6 rounded-t-3xl bg-background px-4 py-6 lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-[1440px] lg:px-8 lg:shadow-2xl">
         <CheckoutForm
           paymentMethods={paymentMethods.map((m) => ({
             type: m.type,
@@ -62,7 +62,7 @@ export default async function CheckoutPage() {
           profile={user ? { name: user.name, email: user.email, phone: user.phone, address: user.address } : null}
           availableCoupons={availableCoupons}
         />
-      </div>
+      </main>
       <StoreFooter />
     </div>
   );

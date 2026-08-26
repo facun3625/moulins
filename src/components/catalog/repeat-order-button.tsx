@@ -13,10 +13,14 @@ export function RepeatOrderButton({
   orderId,
   className,
   compact = false,
+  variant = "outline",
+  size,
 }: {
   orderId: string;
   className?: string;
   compact?: boolean;
+  variant?: React.ComponentProps<typeof Button>["variant"];
+  size?: React.ComponentProps<typeof Button>["size"];
 }) {
   const { addItem, confirmReplace, cart } = useCart();
   const router = useRouter();
@@ -84,7 +88,7 @@ export function RepeatOrderButton({
   }
 
   return (
-    <Button type="button" variant="outline" disabled={pending} onClick={handleClick} className={className}>
+    <Button type="button" variant={variant} size={size} disabled={pending} onClick={handleClick} className={className}>
       <RefreshCcwIcon className="size-4" />
       {pending ? "Revisando…" : "Repetir pedido"}
     </Button>

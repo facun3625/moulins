@@ -44,7 +44,7 @@ export function CartSheet() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-3 border-t p-4">
+            <div className="flex flex-col gap-3 border-t p-4 pb-20 sm:pb-4">
               <div className="flex items-center justify-between text-lg font-semibold">
                 <span>Subtotal</span>
                 <span>{formatPrice(subtotal)}</span>

@@ -38,7 +38,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex flex-1 w-full flex-col text-sidebar-foreground">
       <div className="flex items-center gap-2 px-4 py-4">
         <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sidebar-accent">
           {logoUrl ? (

@@ -41,4 +41,8 @@ export async function updateProfile(formData: FormData) {
   });
 
   revalidatePath("/perfil");
+
+  if (image) {
+    return { image };
+  }
 }

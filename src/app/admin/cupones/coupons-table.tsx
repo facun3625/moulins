@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { CouponToggle, CouponDeleteButton } from "./coupon-row-actions";
 import type { Coupon } from "@/generated/prisma/client";
 
@@ -60,7 +61,10 @@ export function CouponsTable({
             <TableCell>
               <CouponToggle id={c.id} enabled={c.active} />
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="flex justify-end gap-2 text-right">
+              <Button render={<Link href={`/admin/cupones/${c.id}`} />} size="sm" variant="ghost">
+                Editar
+              </Button>
               <CouponDeleteButton id={c.id} />
             </TableCell>
           </TableRow>
