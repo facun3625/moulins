@@ -6,11 +6,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { StoreHero } from "@/components/catalog/store-hero";
 import { StoreFooter } from "@/components/catalog/store-footer";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { FULFILLMENT_TYPE_LABELS, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
-import { RepeatOrderButton } from "@/components/catalog/repeat-order-button";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 
@@ -46,16 +44,19 @@ export default async function OrderDetailPage({
     redirect(`/login?callbackUrl=/pedidos/${id}`);
   }
 
+  const headline =
+    order.status === "CANCELLED" ? "Pedido cancelado" : `¡Pedido ${ORDER_STATUS_LABELS[order.status].toLowerCase()}!`;
+
   return (
     <div className="flex flex-1 flex-col">
       <StoreHero />
       <div className="relative z-1 -mt-6 mx-5 flex flex-1 flex-col rounded-t-3xl bg-background lg:-mt-32 lg:mx-auto lg:w-full lg:max-w-[1440px] lg:shadow-2xl">
         <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-4 py-6 lg:max-w-3xl">
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="text-xl font-semibold">Pedido del {dateFormatter.format(order.createdAt)}</h1>
-            <Badge variant={order.status === "CANCELLED" ? "secondary" : "default"}>
-              {ORDER_STATUS_LABELS[order.status]}
-            </Badge>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold">{headline}</h1>
+            <span className="text-sm text-muted-foreground">
+              Pedido del {dateFormatter.format(order.createdAt)}
+            </span>
           </div>
 
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start">
@@ -181,7 +182,9 @@ export default async function OrderDetailPage({
               Volver a la tienda
             </Button>
             {session?.user && order.userId === session.user.id && (
-              <RepeatOrderButton orderId={order.id} className="flex-1" />
+              <Button size="lg" className="flex-1" render={<Link href="/pedidos" />}>
+                Ver mis pedidos
+              </Button>
             )}
           </div>
         </main>
