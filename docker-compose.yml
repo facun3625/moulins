@@ -1,3 +1,6 @@
+# Solo para desarrollo local — levanta la base con `docker compose up -d db`.
+# En el VPS la base se corre como contenedor suelto (Paso 2 de la guía de
+# deploy) y la app corre con PM2, no con Docker.
 services:
   db:
     image: postgres:16-alpine
@@ -11,24 +14,5 @@ services:
     volumes:
       - pedidos_db_data:/var/lib/postgresql/data
 
-  # Solo para producción (`docker compose up -d app`) — en desarrollo local
-  # se sigue usando `npm run dev` contra la `db` de acá arriba.
-  app:
-    build: .
-    restart: unless-stopped
-    depends_on:
-      - db
-    env_file:
-      - .env
-    ports:
-      - "3000:3000"
-    volumes:
-      # Las fotos de producto y comprobantes de pago se guardan acá
-      # (src/lib/storage.ts) — sin este volumen, cada `docker compose up -d
-      # --build` las borra de nuevo porque el contenedor arranca de la
-      # imagen recién armada.
-      - pedidos_uploads:/app/public/uploads
-
 volumes:
   pedidos_db_data:
-  pedidos_uploads:
