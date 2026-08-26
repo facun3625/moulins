@@ -8,11 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePointsRate } from "./actions";
 
+// pointsPerAmount se guarda como "puntos por cada $1" — un número como
+// 0.001 es incómodo para cargar a mano, así que acá arriba se muestra y
+// edita en la unidad que tiene sentido para un admin: puntos cada $1000.
+const PER = 1000;
+
 export function RateForm({ currentRate }: { currentRate: number }) {
-  const [value, setValue] = useState(String(currentRate));
+  const [value, setValue] = useState(String(currentRate * PER));
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(formData: FormData) {
+    const perThousand = Number(formData.get("pointsPerThousand"));
+    formData.set("pointsPerAmount", String(perThousand / PER));
     startTransition(async () => {
       try {
         await updatePointsRate(formData);
@@ -26,13 +33,13 @@ export function RateForm({ currentRate }: { currentRate: number }) {
   return (
     <form action={handleSubmit} className="flex items-end gap-2">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="pointsPerAmount">Puntos por cada $1 gastado</Label>
+        <Label htmlFor="pointsPerThousand">Puntos por cada $1000 gastados</Label>
         <Input
-          id="pointsPerAmount"
-          name="pointsPerAmount"
+          id="pointsPerThousand"
+          name="pointsPerThousand"
           type="number"
           min="0"
-          step="0.01"
+          step="0.1"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="w-32"

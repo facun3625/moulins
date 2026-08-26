@@ -19,7 +19,7 @@ export default async function AdminPointsPage() {
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">Tasa de acumulación</span>
           <span className="text-xs text-muted-foreground">
-            Cuántos puntos suma un cliente logueado por cada $1 de subtotal, al confirmarse el
+            Cuántos puntos suma un cliente logueado por cada $1000 de subtotal, al confirmarse el
             pedido. Los invitados (sin cuenta) no acumulan.
           </span>
         </div>
