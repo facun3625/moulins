@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { MenuIcon } from "lucide-react";
+import { UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useLoginDialog } from "@/lib/login-dialog-context";
+
+function initials(name?: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+}
 
 export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
   const { data: session, status } = useSession();
@@ -25,12 +36,13 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
     return (
       <Button
         type="button"
-        size="sm"
-        variant={overlay ? "secondary" : "default"}
-        className={overlay ? "border border-white/30 bg-white/15 text-white hover:bg-white/25" : undefined}
+        variant="outline"
+        size="icon"
+        aria-label="Ingresar"
+        className={cn(overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25")}
         onClick={openLogin}
       >
-        Ingresar
+        <UserIcon />
       </Button>
     );
   }
@@ -42,14 +54,20 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Menú"
+            aria-label={`Cuenta de ${session.user.name ?? session.user.email}`}
             className={cn(
+              "rounded-full p-0",
               overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25",
             )}
           />
         }
       >
-        <MenuIcon />
+        <Avatar size="sm">
+          {session.user.image && <AvatarImage src={session.user.image} alt="" />}
+          <AvatarFallback className="bg-primary text-xs text-primary-foreground">
+            {initials(session.user.name)}
+          </AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44 p-1.5">
         {session.user.role === "ADMIN" && (
