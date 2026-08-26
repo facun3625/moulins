@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# prisma (regenerado por `npx prisma generate`, ver Dockerfile)
+/src/generated/prisma
+
+# env — nunca commitear secretos reales
+.env
+.env*.local
+
+# contenido subido por usuarios (fotos de producto, comprobantes de pago)
+/public/uploads
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

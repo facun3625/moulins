@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pedidos
+      POSTGRES_PASSWORD: pedidos
+      POSTGRES_DB: pedidos
+    ports:
+      - "5442:5432"
+    volumes:
+      - pedidos_db_data:/var/lib/postgresql/data
+
+  # Solo para producción (`docker compose up -d app`) — en desarrollo local
+  # se sigue usando `npm run dev` contra la `db` de acá arriba.
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      # Las fotos de producto y comprobantes de pago se guardan acá
+      # (src/lib/storage.ts) — sin este volumen, cada `docker compose up -d
+      # --build` las borra de nuevo porque el contenedor arranca de la
+      # imagen recién armada.
+      - pedidos_uploads:/app/public/uploads
+
+volumes:
+  pedidos_db_data:
+  pedidos_uploads:
