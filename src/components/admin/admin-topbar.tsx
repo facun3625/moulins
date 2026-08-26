@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
-import { MenuIcon, LogOutIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon } from "lucide-react";
+import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -138,10 +138,10 @@ export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="gap-2 py-2 text-sm text-muted-foreground"
+              className="gap-2.5 py-2 text-sm text-muted-foreground"
               onClick={() => signOut()}
             >
-              <LogOutIcon className="size-3.5" />
+              <span className="size-1 shrink-0 rounded-full bg-current" />
               Salir
             </DropdownMenuItem>
           </DropdownMenuContent>
