@@ -104,7 +104,6 @@ model ProductCategory {
 model Product {
   id           String   @id @default(cuid())
   categoryId   String
-  stockGroupId String
   name         String
   description  String?
   active       Boolean  @default(true)
@@ -122,42 +121,41 @@ model Product {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  category     ProductCategory  @relation(fields: [categoryId], references: [id])
-  stockGroup   StockGroup       @relation(fields: [stockGroupId], references: [id])
-  variants       ProductVariant[]
-  images         ProductImage[]
-  productStock   ProductStock[]
-  stockMovements StockMovement[]
-
-  @@index([stockGroupId])
+  category ProductCategory  @relation(fields: [categoryId], references: [id])
+  variants ProductVariant[]
+  images   ProductImage[]
 }
 
-// Todo producto pertenece a un grupo de stock: uno propio (stock
-// individual) o uno compartido con otros productos (ej: "Pizzas" con 100
-// unidades a repartir entre todos los gustos). El stock siempre se maneja
-// a nivel grupo/producto, nunca por variante.
+// Pozo de stock: puede tener un solo miembro (stock individual de esa
+// variante) o varios (compartido entre variantes de un mismo producto, o
+// incluso de productos distintos — ej: "Pizzas grandes" repartido entre
+// todos los gustos que vienen en tamaño grande).
 model StockGroup {
   id                   String @id @default(cuid())
   name                 String @unique
   defaultStockQuantity Int?
 
-  products       Product[]
+  variants       ProductVariant[]
   stock          StockGroupStock[]
   stockMovements StockMovement[]
 }
 
 model ProductVariant {
-  id        String   @id @default(cuid())
-  productId String
-  gusto     String?
-  tamano    String?
-  sku       String?
-  price     Decimal  @db.Decimal(10, 2)
-  active    Boolean  @default(true)
-  order     Int      @default(0)
+  id           String  @id @default(cuid())
+  productId    String
+  stockGroupId String
+  gusto        String?
+  tamano       String?
+  sku          String?
+  price        Decimal @db.Decimal(10, 2)
+  active       Boolean @default(true)
+  order        Int     @default(0)
 
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockGroup StockGroup  @relation(fields: [stockGroupId], references: [id])
   orderItems OrderItem[]
+
+  @@index([stockGroupId])
 }
 
 model ProductImage {
@@ -178,13 +176,11 @@ enum DeliveryDateStatus {
 }
 
 // Cómo se maneja el stock para una fecha puntual: BY_GROUP usa los pozos
-// compartidos (StockGroupStock, lo que ya tiene armado cada producto);
-// BY_PRODUCT ignora los grupos y deja cargar un número por producto solo
-// para esta fecha (ProductStock); UNLIMITED no trackea nada, todo
+// de cada variante (StockGroupStock — individuales o compartidos, según
+// cómo esté armado el catálogo); UNLIMITED no trackea nada, todo
 // disponible siempre.
 enum DateStockMode {
   BY_GROUP
-  BY_PRODUCT
   UNLIMITED
 }
 
@@ -206,7 +202,6 @@ model DeliveryDate {
   createdAt   DateTime           @default(now())
 
   stockGroupStock StockGroupStock[]
-  productStock    ProductStock[]
   orders          Order[]
   pickupSlots     PickupSlot[]
   stockMovements  StockMovement[]
@@ -293,19 +288,6 @@ model StockGroupStock {
 
 // Stock por producto para una fecha en modo BY_PRODUCT (ignora el grupo
 // del producto: cada uno se carga por separado, solo para esa fecha).
-model ProductStock {
-  id                String @id @default(cuid())
-  productId         String
-  deliveryDateId    String
-  quantityAvailable Int? // null = sin límite
-  quantitySold      Int  @default(0)
-
-  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, deliveryDateId])
-}
-
 // Historial de cada cambio al stock de una fecha: ventas (al confirmar un
 // pedido), reposiciones (al cancelar/borrar uno) y ajustes manuales del
 // admin. "delta" es el cambio en el remanente (negativo = bajó, positivo =
@@ -314,7 +296,6 @@ model StockMovement {
   id                String              @id @default(cuid())
   deliveryDateId    String
   stockGroupId      String?
-  productId         String?
   reason            StockMovementReason
   delta             Int?
   quantityAvailable Int?
@@ -324,7 +305,6 @@ model StockMovement {
 
   deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
   stockGroup   StockGroup?  @relation(fields: [stockGroupId], references: [id], onDelete: Cascade)
-  product      Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([deliveryDateId])
 }

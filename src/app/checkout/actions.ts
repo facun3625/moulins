@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getPickupSlotsForDate } from "@/lib/pickup-slots";
 import { saveUploadedFile } from "@/lib/storage";
 import { isWeeklyWindowStillOpen } from "@/lib/availability";
-import { logGroupStockMovement, logProductStockMovement } from "@/lib/stock-movements";
+import { logGroupStockMovement } from "@/lib/stock-movements";
 import { awardPointsForOrder } from "@/lib/points";
 import { getStoreSettings, getOrderEmailMessage } from "@/lib/settings";
 import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
@@ -212,12 +212,8 @@ export async function placeOrder(formData: FormData) {
         product: { active: true, category: { active: true } },
       },
       include: {
-        product: {
-          include: {
-            stockGroup: { include: { stock: { where: { deliveryDateId: parsed.deliveryDateId } } } },
-            productStock: { where: { deliveryDateId: parsed.deliveryDateId } },
-          },
-        },
+        product: true,
+        stockGroup: { include: { stock: { where: { deliveryDateId: parsed.deliveryDateId } } } },
       },
     });
 
@@ -239,20 +235,20 @@ export async function placeOrder(formData: FormData) {
       return { productVariantId: variant.id, quantity: item.quantity, unitPrice };
     });
 
-    // El modo de stock de la fecha decide cómo se valida y descuenta: por
-    // grupo (pozo compartido), por producto (número propio para esta fecha,
-    // ignorando el grupo), o sin límite (no se trackea nada).
+    // El modo de stock de la fecha decide si se valida contra los pozos
+    // (BY_GROUP, cada variante con su grupo — individual o compartido) o no
+    // se trackea nada (UNLIMITED).
     const requestedByGroup = new Map<string, number>();
-    const requestedByProduct = new Map<string, number>();
 
     if (deliveryDate.stockMode === "BY_GROUP") {
       for (const item of orderItemsData) {
         const variant = variants.find((v) => v.id === item.productVariantId)!;
-        const groupId = variant.product.stockGroupId;
+        const groupId = variant.stockGroupId;
         requestedByGroup.set(groupId, (requestedByGroup.get(groupId) ?? 0) + item.quantity);
       }
       for (const [groupId, requested] of requestedByGroup) {
-        const group = variants.find((v) => v.product.stockGroupId === groupId)!.product.stockGroup;
+        const variant = variants.find((v) => v.stockGroupId === groupId)!;
+        const group = variant.stockGroup;
         const pool = group.stock[0];
         if (pool && pool.quantityAvailable != null) {
           const remaining = Math.max(0, pool.quantityAvailable - pool.quantitySold);
@@ -261,26 +257,6 @@ export async function placeOrder(formData: FormData) {
               remaining > 0
                 ? `Solo quedan ${remaining} unidades disponibles de "${group.name}" (pediste ${requested}). Ajustá la cantidad en el carrito.`
                 : `Se agotó el stock de "${group.name}". Sacalo del carrito para poder confirmar.`,
-            );
-          }
-        }
-      }
-    } else if (deliveryDate.stockMode === "BY_PRODUCT") {
-      for (const item of orderItemsData) {
-        const variant = variants.find((v) => v.id === item.productVariantId)!;
-        const productId = variant.productId;
-        requestedByProduct.set(productId, (requestedByProduct.get(productId) ?? 0) + item.quantity);
-      }
-      for (const [productId, requested] of requestedByProduct) {
-        const variant = variants.find((v) => v.productId === productId)!;
-        const pool = variant.product.productStock[0];
-        if (pool && pool.quantityAvailable != null) {
-          const remaining = Math.max(0, pool.quantityAvailable - pool.quantitySold);
-          if (remaining < requested) {
-            throw new Error(
-              remaining > 0
-                ? `Solo quedan ${remaining} unidades disponibles de "${variant.product.name}" (pediste ${requested}). Ajustá la cantidad en el carrito.`
-                : `Se agotó el stock de "${variant.product.name}". Sacalo del carrito para poder confirmar.`,
             );
           }
         }
@@ -382,26 +358,6 @@ export async function placeOrder(formData: FormData) {
       await logGroupStockMovement(tx, {
         deliveryDateId: parsed.deliveryDateId,
         stockGroupId: groupId,
-        reason: "SALE",
-        delta: -quantity,
-        note: `Pedido ${created.id}`,
-      });
-    }
-
-    for (const [productId, quantity] of requestedByProduct) {
-      await tx.productStock.upsert({
-        where: { productId_deliveryDateId: { productId, deliveryDateId: parsed.deliveryDateId } },
-        update: { quantitySold: { increment: quantity } },
-        create: {
-          productId,
-          deliveryDateId: parsed.deliveryDateId,
-          quantityAvailable: null,
-          quantitySold: quantity,
-        },
-      });
-      await logProductStockMovement(tx, {
-        deliveryDateId: parsed.deliveryDateId,
-        productId,
         reason: "SALE",
         delta: -quantity,
         note: `Pedido ${created.id}`,

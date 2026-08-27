@@ -14,6 +14,11 @@ function toDatetimeLocalValue(d: Date) {
   return local.toISOString().slice(0, 16);
 }
 
+function variantLabel(productName: string, gusto: string | null, tamano: string | null) {
+  const suffix = [gusto, tamano].filter(Boolean).join(" · ");
+  return suffix ? `${productName} — ${suffix}` : productName;
+}
+
 export default async function EditDeliveryDatePage({
   params,
 }: {
@@ -22,18 +27,18 @@ export default async function EditDeliveryDatePage({
   const { id } = await params;
   await requireAdmin();
 
-  const [deliveryDate, products, stockGroups, productStock, pickupEnabled, dateSlots, defaultSlots, movements, costs] =
+  const [deliveryDate, variants, stockGroups, pickupEnabled, dateSlots, defaultSlots, movements, costs] =
     await Promise.all([
       prisma.deliveryDate.findUnique({ where: { id } }),
-      prisma.product.findMany({
-        where: { active: true },
-        orderBy: { name: "asc" },
+      prisma.productVariant.findMany({
+        where: { active: true, product: { active: true } },
+        include: { product: true },
+        orderBy: [{ product: { name: "asc" } }, { order: "asc" }],
       }),
       prisma.stockGroup.findMany({
         include: { stock: { where: { deliveryDateId: id } } },
         orderBy: { name: "asc" },
       }),
-      prisma.productStock.findMany({ where: { deliveryDateId: id } }),
       prisma.fulfillmentMethodConfig
         .findUnique({ where: { type: "PICKUP" } })
         .then((row) => row?.enabled ?? false),
@@ -47,7 +52,7 @@ export default async function EditDeliveryDatePage({
       }),
       prisma.stockMovement.findMany({
         where: { deliveryDateId: id },
-        include: { stockGroup: { select: { name: true } }, product: { select: { name: true } } },
+        include: { stockGroup: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       }),
       prisma.deliveryDateCost.findMany({
@@ -58,32 +63,23 @@ export default async function EditDeliveryDatePage({
 
   if (!deliveryDate) notFound();
 
-  // Todo producto activo pertenece a un grupo (propio o compartido); acá se
+  // Toda variante activa pertenece a un pozo (propio o compartido); acá se
   // arma una sola lista, un pozo de stock por grupo.
   const groups = stockGroups
     .map((g) => {
-      const productNames = products.filter((p) => p.stockGroupId === g.id).map((p) => p.name);
+      const memberNames = variants
+        .filter((v) => v.stockGroupId === g.id)
+        .map((v) => variantLabel(v.product.name, v.gusto, v.tamano));
       const stock = g.stock[0];
       return {
         id: g.id,
         name: g.name,
-        productNames,
+        productNames: memberNames,
         quantityAvailable: stock?.quantityAvailable ?? null,
         quantitySold: stock?.quantitySold ?? 0,
       };
     })
     .filter((g) => g.productNames.length > 0);
-
-  const productStockById = new Map(productStock.map((s) => [s.productId, s]));
-  const flatProducts = products.map((p) => {
-    const s = productStockById.get(p.id);
-    return {
-      id: p.id,
-      name: p.name,
-      quantityAvailable: s?.quantityAvailable ?? null,
-      quantitySold: s?.quantitySold ?? 0,
-    };
-  });
 
   return (
     <DateEditor
@@ -99,14 +95,17 @@ export default async function EditDeliveryDatePage({
       }}
       stockMode={deliveryDate.stockMode}
       groups={groups}
-      flatProducts={flatProducts}
-      allProducts={products.map((p) => ({ id: p.id, name: p.name, stockGroupId: p.stockGroupId }))}
+      allProducts={variants.map((v) => ({
+        id: v.id,
+        name: variantLabel(v.product.name, v.gusto, v.tamano),
+        stockGroupId: v.stockGroupId,
+      }))}
       pickupEnabled={pickupEnabled}
       dateSlots={dateSlots}
       defaultSlots={defaultSlots}
       movements={movements.map((m) => ({
         id: m.id,
-        targetName: m.stockGroup?.name ?? m.product?.name ?? "—",
+        targetName: m.stockGroup?.name ?? "—",
         reason: m.reason,
         delta: m.delta,
         quantityAvailable: m.quantityAvailable,

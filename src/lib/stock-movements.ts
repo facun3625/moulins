@@ -2,8 +2,8 @@ import type { Prisma, StockMovementReason } from "@/generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
 
-// Se llama DESPUÉS de escribir en StockGroupStock/ProductStock — relee la
-// fila para dejar la foto (tope/vendido) resultante junto al movimiento.
+// Se llama DESPUÉS de escribir en StockGroupStock — relee la fila para
+// dejar la foto (tope/vendido) resultante junto al movimiento.
 export async function logGroupStockMovement(
   tx: Tx,
   params: {
@@ -22,33 +22,6 @@ export async function logGroupStockMovement(
     data: {
       deliveryDateId: params.deliveryDateId,
       stockGroupId: params.stockGroupId,
-      reason: params.reason,
-      delta: params.delta ?? null,
-      quantityAvailable: row.quantityAvailable,
-      quantitySold: row.quantitySold,
-      note: params.note,
-    },
-  });
-}
-
-export async function logProductStockMovement(
-  tx: Tx,
-  params: {
-    deliveryDateId: string;
-    productId: string;
-    reason: StockMovementReason;
-    delta?: number | null;
-    note?: string;
-  },
-) {
-  const row = await tx.productStock.findUnique({
-    where: { productId_deliveryDateId: { productId: params.productId, deliveryDateId: params.deliveryDateId } },
-  });
-  if (!row) return;
-  await tx.stockMovement.create({
-    data: {
-      deliveryDateId: params.deliveryDateId,
-      productId: params.productId,
       reason: params.reason,
       delta: params.delta ?? null,
       quantityAvailable: row.quantityAvailable,

@@ -6,8 +6,8 @@ import { Catalog } from "@/components/catalog/catalog";
 import { expireStaleDates } from "@/lib/schedule";
 import { getPopupConfig } from "@/lib/popup";
 import { resolveScheduledSalesAvailability, resolveWeeklyAvailability, type OpenSale } from "@/lib/availability";
+import { getRemainingForVariants } from "@/lib/stock";
 
-const UNLIMITED_STOCK = 999;
 const saleDateFormatter = new Intl.DateTimeFormat("es-AR", {
   weekday: "long",
   day: "2-digit",
@@ -140,68 +140,41 @@ export default async function Home({
   const selectedDateId =
     (fecha && resolved.openDates.some((d) => d.id === fecha) ? fecha : resolved.selectedDateId) ?? null;
 
-  const stockMode = selectedDateId
-    ? ((await prisma.deliveryDate.findUnique({ where: { id: selectedDateId }, select: { stockMode: true } }))
-        ?.stockMode ?? "BY_GROUP")
-    : "BY_GROUP";
-
   const products = await prisma.product.findMany({
     where: { active: true, category: { active: true } },
     include: {
       category: true,
       images: { orderBy: { order: "asc" } },
-      stockGroup: { include: { stock: { where: { deliveryDateId: selectedDateId ?? "__none__" } } } },
-      productStock: { where: { deliveryDateId: selectedDateId ?? "__none__" } },
       variants: { where: { active: true }, orderBy: { order: "asc" } },
     },
     orderBy: [{ featured: "desc" }, { name: "asc" }],
   });
 
-  const catalogProducts = products
-    .map((p) => {
-      let remaining: number;
-      if (stockMode === "UNLIMITED") {
-        remaining = UNLIMITED_STOCK;
-      } else if (stockMode === "BY_PRODUCT") {
-        const s = p.productStock[0];
-        remaining =
-          s == null || s.quantityAvailable == null
-            ? UNLIMITED_STOCK
-            : Math.max(0, s.quantityAvailable - s.quantitySold);
-      } else {
-        const groupStock = p.stockGroup.stock[0];
-        remaining =
-          groupStock == null || groupStock.quantityAvailable == null
-            ? UNLIMITED_STOCK
-            : Math.max(0, groupStock.quantityAvailable - groupStock.quantitySold);
-      }
+  const allVariantIds = products.flatMap((p) => p.variants.map((v) => v.id));
+  const remainingByVariant = selectedDateId
+    ? await getRemainingForVariants(selectedDateId, allVariantIds)
+    : new Map<string, number>();
 
-      // Pausa manual sin fecha, solo aplica en modo horario semanal.
-      if (storeConfig.orderingMode === "WEEKLY_HOURS" && p.soldOutToday) {
-        remaining = 0;
-      }
-
-      return {
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        categoryId: p.categoryId,
-        categoryName: p.category.name,
-        categoryIcon: p.category.icon,
-        imageUrl: p.images[0]?.url ?? null,
-        images: p.images.map((i) => i.url),
-        stockGroupId: stockMode === "BY_GROUP" ? p.stockGroupId : null,
-        featured: p.featured,
-        contactToBuy: p.contactToBuy,
-        tags: p.tags,
-        variants: p.variants.map((v) => ({
-          id: v.id,
-          label: [v.gusto, v.tamano].filter(Boolean).join(" · ") || "Único",
-          price: Number(v.price),
-          remaining,
-        })),
-      };
-    });
+  const catalogProducts = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    categoryId: p.categoryId,
+    categoryName: p.category.name,
+    categoryIcon: p.category.icon,
+    imageUrl: p.images[0]?.url ?? null,
+    images: p.images.map((i) => i.url),
+    featured: p.featured,
+    contactToBuy: p.contactToBuy,
+    tags: p.tags,
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      label: [v.gusto, v.tamano].filter(Boolean).join(" · ") || "Único",
+      price: Number(v.price),
+      remaining: remainingByVariant.get(v.id) ?? 0,
+      stockGroupId: v.stockGroupId,
+    })),
+  }));
 
   // Vacío de verdad (nada cargado) o realmente cerrado — no confundir con
   // "abierto pero sin stock", que sigue mostrando la tienda con lo agotado

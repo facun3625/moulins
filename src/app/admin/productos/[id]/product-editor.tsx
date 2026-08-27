@@ -36,6 +36,11 @@ import { useConfirm } from "@/components/admin/confirm-provider";
 import { deleteProduct, duplicateProduct, saveProduct } from "../actions";
 import { StockGroupPicker, type StockGroupSelection } from "../stock-group-picker";
 
+function stockSelectionFor(stockGroupId: string, sharedGroups: { id: string }[]): StockGroupSelection {
+  const isShared = sharedGroups.some((g) => g.id === stockGroupId);
+  return { mode: isShared ? "shared" : "individual", sharedGroupId: isShared ? stockGroupId : "" };
+}
+
 const TAG_SUGGESTIONS = [
   "Nuevo",
   "Más vendido",
@@ -54,6 +59,7 @@ type Variant = {
   sku: string;
   price: string;
   active: boolean;
+  stockGroupId: string;
 };
 
 type EditorImage =
@@ -65,7 +71,6 @@ type Product = {
   name: string;
   description: string | null;
   categoryId: string;
-  stockGroupId: string;
   active: boolean;
   featured: boolean;
   contactToBuy: boolean;
@@ -77,6 +82,7 @@ type Product = {
     sku: string | null;
     price: string;
     active: boolean;
+    stockGroupId: string;
   }[];
   images: { id: string; url: string }[];
 };
@@ -96,6 +102,7 @@ function variantsFromProduct(product: Product): Variant[] {
     sku: v.sku ?? "",
     price: v.price,
     active: v.active,
+    stockGroupId: v.stockGroupId,
   }));
 }
 
@@ -111,6 +118,7 @@ function variantSnapshot(v: Variant) {
     sku: v.sku,
     price: v.price,
     active: v.active,
+    stockGroupId: v.stockGroupId,
   };
 }
 
@@ -141,9 +149,6 @@ export function ProductEditor({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [categoryId, setCategoryId] = useState(product.categoryId);
-  const [stockGroupSelection, setStockGroupSelection] = useState<StockGroupSelection>({
-    stockGroupId: product.stockGroupId,
-  });
   const [active, setActive] = useState(product.active);
   const [featured, setFeatured] = useState(product.featured);
   const [contactToBuy, setContactToBuy] = useState(product.contactToBuy);
@@ -157,7 +162,6 @@ export function ProductEditor({
   const [images, setImages] = useState<EditorImage[]>(() => imagesFromProduct(product));
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [stockGroupResetKey, setStockGroupResetKey] = useState(0);
 
   const initialSnapshot = useMemo(
     () =>
@@ -165,7 +169,6 @@ export function ProductEditor({
         name: product.name,
         description: product.description ?? "",
         categoryId: product.categoryId,
-        stockGroupId: product.stockGroupId,
         active: product.active,
         featured: product.featured,
         contactToBuy: product.contactToBuy,
@@ -180,7 +183,6 @@ export function ProductEditor({
     name,
     description,
     categoryId,
-    stockGroupId: stockGroupSelection.stockGroupId,
     active,
     featured,
     contactToBuy,
@@ -237,7 +239,6 @@ export function ProductEditor({
         formData.set("name", name.trim());
         formData.set("description", description.trim());
         formData.set("categoryId", categoryId);
-        formData.set("stockGroupId", stockGroupSelection.stockGroupId);
         formData.set("active", String(active));
         formData.set("featured", String(featured));
         formData.set("contactToBuy", String(contactToBuy));
@@ -253,6 +254,7 @@ export function ProductEditor({
               price: contactToBuy && !(Number(v.price) > 0) ? "1" : v.price,
               active: v.active,
               order: i,
+              stockGroupId: v.stockGroupId,
             })),
           ),
         );
@@ -289,14 +291,12 @@ export function ProductEditor({
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, pending, name, description, categoryId, stockGroupSelection, active, featured, contactToBuy, tags, variants, images, deletedVariantIds, deletedImageIds]);
+  }, [dirty, pending, name, description, categoryId, active, featured, contactToBuy, tags, variants, images, deletedVariantIds, deletedImageIds]);
 
   function discard() {
     setName(product.name);
     setDescription(product.description ?? "");
     setCategoryId(product.categoryId);
-    setStockGroupSelection({ stockGroupId: product.stockGroupId });
-    setStockGroupResetKey((k) => k + 1);
     setActive(product.active);
     setFeatured(product.featured);
     setContactToBuy(product.contactToBuy);
@@ -316,9 +316,15 @@ export function ProductEditor({
 
   function addVariant() {
     const key = nextKey();
+    // Por defecto, una variante nueva se suma al pozo de sus hermanas (si
+    // ya tienen todas el mismo) — si no hay ninguna todavía, nace individual.
+    const siblingGroupId =
+      variants.length > 0 && variants.every((v) => v.stockGroupId === variants[0].stockGroupId)
+        ? variants[0].stockGroupId
+        : "__solo__";
     setVariants((prev) => [
       ...prev,
-      { key, gusto: "", tamano: "", sku: "", price: "", active: true },
+      { key, gusto: "", tamano: "", sku: "", price: "", active: true, stockGroupId: siblingGroupId },
     ]);
     setExpandedVariant(key);
   }
@@ -438,13 +444,6 @@ export function ProductEditor({
             </Select>
           </div>
         </div>
-
-        <StockGroupPicker
-          key={stockGroupResetKey}
-          groups={stockGroups}
-          defaultGroupId={product.stockGroupId}
-          onChange={setStockGroupSelection}
-        />
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="p-description">Descripción (opcional)</Label>
@@ -616,7 +615,7 @@ export function ProductEditor({
           <p className="text-xs text-muted-foreground">
             {contactToBuy
               ? "Con \"Consultar por WhatsApp\" activado el precio no se muestra — solo importan los nombres."
-              : "Cada combinación tiene su propio precio. El stock por fecha se carga en \"Fechas y stock\"."}
+              : "Cada combinación tiene su propio precio y su propio stock — individual, o compartido con otras."}
           </p>
         </div>
 
@@ -629,6 +628,7 @@ export function ProductEditor({
               count={variants.length}
               hidePrice={contactToBuy}
               expanded={expandedVariant === v.key}
+              sharedStockGroups={stockGroups}
               onToggleExpand={() => setExpandedVariant((cur) => (cur === v.key ? null : v.key))}
               onChange={(patch) =>
                 setVariants((prev) => prev.map((x) => (x.key === v.key ? { ...x, ...patch } : x)))
@@ -681,6 +681,7 @@ function VariantRow({
   count,
   hidePrice = false,
   expanded,
+  sharedStockGroups,
   onToggleExpand,
   onChange,
   onMove,
@@ -691,12 +692,14 @@ function VariantRow({
   count: number;
   hidePrice?: boolean;
   expanded: boolean;
+  sharedStockGroups: { id: string; name: string }[];
   onToggleExpand: () => void;
   onChange: (patch: Partial<Variant>) => void;
   onMove: (dir: "up" | "down") => void;
   onRemove: () => void;
 }) {
   const label = [variant.gusto, variant.tamano].filter(Boolean).join(" · ") || "Sin nombre";
+  const stockSelection = stockSelectionFor(variant.stockGroupId, sharedStockGroups);
 
   return (
     <div className="rounded-md border">
@@ -775,6 +778,14 @@ function VariantRow({
             <Label className="text-xs">SKU / código interno (opcional)</Label>
             <Input value={variant.sku} onChange={(e) => onChange({ sku: e.target.value })} />
           </div>
+          <StockGroupPicker
+            idPrefix={`variant-stock-${variant.key}`}
+            groups={sharedStockGroups}
+            value={stockSelection}
+            onChange={(next) =>
+              onChange({ stockGroupId: next.mode === "individual" ? "__solo__" : next.sharedGroupId })
+            }
+          />
         </div>
       )}
     </div>

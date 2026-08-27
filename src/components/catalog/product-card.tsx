@@ -50,7 +50,7 @@ export function ProductCard({
   // Si el producto comparte pozo de stock con otros, esto ya descuenta lo
   // que esos otros productos tengan en el carrito.
   const addRoom = singleVariant
-    ? roomToAdd(cart.items, product.stockGroupId, singleVariant.remaining, singleVariant.id)
+    ? roomToAdd(cart.items, singleVariant.stockGroupId, singleVariant.remaining, singleVariant.id)
     : 0;
   const outOfStock = singleVariant != null && addRoom <= 0;
 
@@ -68,9 +68,9 @@ export function ProductCard({
       return;
     }
     setChecking(true);
-    const fresh = await checkRemainingStock(deliveryDateId, product.id);
+    const fresh = await checkRemainingStock(deliveryDateId, singleVariant.id);
     setChecking(false);
-    const room = roomToAdd(cart.items, product.stockGroupId, fresh, singleVariant.id);
+    const room = roomToAdd(cart.items, singleVariant.stockGroupId, fresh, singleVariant.id);
     if (room <= 0) {
       toast.error(`Se agotó el stock de "${product.name}".`);
       return;
@@ -84,7 +84,7 @@ export function ProductCard({
         unitPrice: singleVariant.price,
         imageUrl: product.imageUrl,
         maxQuantity: fresh,
-        stockGroupId: product.stockGroupId,
+        stockGroupId: singleVariant.stockGroupId,
       },
       1,
     );
@@ -94,9 +94,9 @@ export function ProductCard({
     e.stopPropagation();
     if (!singleVariant) return;
     setChecking(true);
-    const fresh = await checkRemainingStock(deliveryDateId, product.id);
+    const fresh = await checkRemainingStock(deliveryDateId, singleVariant.id);
     setChecking(false);
-    const room = roomToAdd(cart.items, product.stockGroupId, fresh, singleVariant.id);
+    const room = roomToAdd(cart.items, singleVariant.stockGroupId, fresh, singleVariant.id);
     if (room <= 0) {
       toast.error(`No queda más stock disponible de "${product.name}".`);
       return;

@@ -4,9 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeftIcon, Trash2Icon, UsersIcon } from "lucide-react";
+import { ArrowLeftIcon, SearchIcon, Trash2Icon, UsersIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { deleteDeliveryDate, saveDeliveryDate } from "../actions";
 import { CostsTab, type CostRow } from "./costs-tab";
 
-type StockMode = "BY_GROUP" | "BY_PRODUCT" | "UNLIMITED";
+type StockMode = "BY_GROUP" | "UNLIMITED";
 
 type DeliveryDateData = {
   id: string;
@@ -46,7 +47,6 @@ type Group = {
 };
 
 type Product = { id: string; name: string; stockGroupId: string };
-type FlatProduct = { id: string; name: string; quantityAvailable: number | null; quantitySold: number };
 type QtyState = { unlimited: boolean; value: string };
 type Slot = { id: string; label: string };
 type Movement = {
@@ -75,8 +75,7 @@ const SOLO = "__solo__";
 const SOLO_KEY_PREFIX = "solo:";
 
 const MODES: { value: StockMode; label: string; hint: string }[] = [
-  { value: "BY_GROUP", label: "Por grupo", hint: "Usa los grupos de stock que ya armaste (compartidos o individuales)." },
-  { value: "BY_PRODUCT", label: "Por producto", hint: "Ignora los grupos: un número por producto, solo para esta fecha." },
+  { value: "BY_GROUP", label: "Con stock", hint: "Cada variante descuenta de su pozo — individual o compartido, según cómo esté armado el producto." },
   { value: "UNLIMITED", label: "Sin límite", hint: "No se trackea stock. Todo está siempre disponible en esta fecha." },
 ];
 
@@ -88,7 +87,6 @@ export function DateEditor({
   deliveryDate,
   stockMode: initialStockMode,
   groups,
-  flatProducts,
   allProducts,
   pickupEnabled,
   dateSlots,
@@ -100,7 +98,6 @@ export function DateEditor({
   stockMode: StockMode;
   costs: CostRow[];
   groups: Group[];
-  flatProducts: FlatProduct[];
   allProducts: Product[];
   pickupEnabled: boolean;
   dateSlots: Slot[];
@@ -138,9 +135,9 @@ export function DateEditor({
   const [groupQty, setGroupQty] = useState<Record<string, QtyState>>(() =>
     Object.fromEntries(groups.map((g) => [g.id, qtyFrom(g.quantityAvailable)])),
   );
-  const [productQty, setProductQty] = useState<Record<string, QtyState>>(() =>
-    Object.fromEntries(flatProducts.map((p) => [p.id, qtyFrom(p.quantityAvailable)])),
-  );
+
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<"all" | "shared" | "individual">("all");
 
   const [slots, setSlots] = useState<Slot[]>(() => dateSlots.map((s) => ({ ...s })));
   const [newSlotIds, setNewSlotIds] = useState<Set<string>>(() => new Set());
@@ -155,7 +152,6 @@ export function DateEditor({
     stockMode: initialStockMode,
     productGroupId: Object.fromEntries(allProducts.map((p) => [p.id, p.stockGroupId])),
     groupQty: Object.fromEntries(groups.map((g) => [g.id, qtyFrom(g.quantityAvailable)])),
-    productQty: Object.fromEntries(flatProducts.map((p) => [p.id, qtyFrom(p.quantityAvailable)])),
     slots: dateSlots.map((s) => ({ ...s })),
   }));
 
@@ -165,12 +161,10 @@ export function DateEditor({
   // del render (no en un efecto) siguiendo el patrón de React para
   // "resetear estado cuando cambia una prop".
   const groupsSignature = groups.map((g) => `${g.id}:${g.quantityAvailable}`).join(",");
-  const productsSignature = flatProducts.map((p) => `${p.id}:${p.quantityAvailable}`).join(",");
   const membershipSignature = allProducts.map((p) => `${p.id}:${p.stockGroupId}`).join(",");
   const slotsSignature = dateSlots.map((s) => `${s.id}:${s.label}`).join(",");
 
   const [syncedGroups, setSyncedGroups] = useState(groupsSignature);
-  const [syncedProducts, setSyncedProducts] = useState(productsSignature);
   const [syncedMembership, setSyncedMembership] = useState(membershipSignature);
   const [syncedSlots, setSyncedSlots] = useState(slotsSignature);
 
@@ -179,12 +173,6 @@ export function DateEditor({
     const fresh = Object.fromEntries(groups.map((g) => [g.id, qtyFrom(g.quantityAvailable)]));
     setGroupQty(fresh);
     setBaseline((prev) => ({ ...prev, groupQty: fresh }));
-  }
-  if (productsSignature !== syncedProducts) {
-    setSyncedProducts(productsSignature);
-    const fresh = Object.fromEntries(flatProducts.map((p) => [p.id, qtyFrom(p.quantityAvailable)]));
-    setProductQty(fresh);
-    setBaseline((prev) => ({ ...prev, productQty: fresh }));
   }
   if (membershipSignature !== syncedMembership) {
     setSyncedMembership(membershipSignature);
@@ -211,7 +199,6 @@ export function DateEditor({
     stockMode,
     productGroupId,
     groupQty,
-    productQty,
     slots,
   });
   const dirty = JSON.stringify(baseline) !== currentSnapshot;
@@ -242,14 +229,6 @@ export function DateEditor({
           return;
         }
       }
-    } else if (stockMode === "BY_PRODUCT") {
-      for (const p of flatProducts) {
-        const q = productQty[p.id];
-        if (q && !q.unlimited && Math.max(0, Number(q.value) || 0) < p.quantitySold) {
-          toast.error(`"${p.name}" ya vendió ${p.quantitySold} — no puede quedar disponible por debajo de eso`);
-          return;
-        }
-      }
     }
 
     startTransition(async () => {
@@ -267,10 +246,6 @@ export function DateEditor({
           for (const [groupId, qty] of Object.entries(groupQty)) {
             if (groupId.startsWith(SOLO_KEY_PREFIX)) continue;
             formData.set(`stockgroup_${groupId}`, qty.unlimited ? "" : qty.value);
-          }
-        } else if (stockMode === "BY_PRODUCT") {
-          for (const [productId, qty] of Object.entries(productQty)) {
-            formData.set(`product_${productId}`, qty.unlimited ? "" : qty.value);
           }
         }
 
@@ -300,7 +275,6 @@ export function DateEditor({
           stockMode,
           productGroupId,
           groupQty,
-          productQty,
           slots,
         });
         setNewSlotIds(new Set());
@@ -323,7 +297,6 @@ export function DateEditor({
     setStockMode(baseline.stockMode);
     setProductGroupId(baseline.productGroupId);
     setGroupQty(baseline.groupQty);
-    setProductQty(baseline.productQty);
     setSlots(baseline.slots);
     setNewSlotIds(new Set());
     setRemovedSlotIds([]);
@@ -369,10 +342,13 @@ export function DateEditor({
     });
   }
 
+  const sharedGroups = effectiveGroups.filter((g) => g.productNames.length > 1);
+  const individualGroups = effectiveGroups.filter((g) => g.productNames.length <= 1);
+
   async function applyToAllGroups() {
     const value = await prompt({
-      title: "Aplicar a todos",
-      label: "Cantidad a aplicar a todos los grupos",
+      title: "Aplicar a todos los grupos",
+      label: "Cantidad a aplicar a todos los grupos compartidos",
       type: "number",
       placeholder: "Ej: 20",
     });
@@ -380,22 +356,37 @@ export function DateEditor({
     const n = String(Math.max(0, Number(value) || 0));
     setGroupQty((prev) => {
       const next = { ...prev };
-      for (const g of effectiveGroups) next[g.id] = { unlimited: false, value: n };
+      for (const g of sharedGroups) next[g.id] = { unlimited: false, value: n };
       return next;
     });
   }
-  async function applyToAllProducts() {
+
+  async function applyToAllIndividual() {
     const value = await prompt({
-      title: "Aplicar a todos",
-      label: "Cantidad a aplicar a todos los productos",
+      title: "Aplicar a todos los individuales",
+      label: "Cantidad a aplicar a todos los productos con stock individual",
       type: "number",
       placeholder: "Ej: 20",
     });
     if (value == null || value.trim() === "") return;
     const n = String(Math.max(0, Number(value) || 0));
-    setProductQty((prev) => Object.fromEntries(Object.keys(prev).map((id) => [id, { unlimited: false, value: n }])));
+    setGroupQty((prev) => {
+      const next = { ...prev };
+      for (const g of individualGroups) next[g.id] = { unlimited: false, value: n };
+      return next;
+    });
   }
 
+  const groupSearchLower = groupSearch.trim().toLowerCase();
+  const visibleGroups = effectiveGroups.filter((g) => {
+    if (groupFilter === "shared" && g.productNames.length <= 1) return false;
+    if (groupFilter === "individual" && g.productNames.length > 1) return false;
+    if (!groupSearchLower) return true;
+    return (
+      g.name.toLowerCase().includes(groupSearchLower) ||
+      g.productNames.some((n) => n.toLowerCase().includes(groupSearchLower))
+    );
+  });
   function addSlot(label: string) {
     const id = `temp:${Date.now()}:${Math.random().toString(36).slice(2)}`;
     setSlots((prev) => [...prev, { id, label }]);
@@ -563,58 +554,85 @@ export function DateEditor({
 
           {stockMode === "BY_GROUP" && (
             <div className="flex flex-col gap-4 border-t pt-4">
-              {effectiveGroups.length > 1 && (
-                <Button type="button" variant="outline" size="sm" onClick={applyToAllGroups} className="self-end">
-                  Aplicar a todos
-                </Button>
-              )}
-              {effectiveGroups.length === 0 && (
+              {effectiveGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Todavía no hay productos activos. Cargalos primero en Productos.
                 </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative min-w-[160px] flex-1">
+                      <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={groupSearch}
+                        onChange={(e) => setGroupSearch(e.target.value)}
+                        placeholder="Buscar producto o grupo..."
+                        className="pl-8"
+                      />
+                    </div>
+                    <div className="flex gap-1.5">
+                      {(
+                        [
+                          { value: "all", label: "Todos" },
+                          { value: "shared", label: "Grupos" },
+                          { value: "individual", label: "Individuales" },
+                        ] as const
+                      ).map((f) => (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onClick={() => setGroupFilter(f.value)}
+                          className={cn(
+                            "rounded-lg border px-3 py-2 text-center text-xs font-medium whitespace-nowrap transition-colors",
+                            groupFilter === f.value
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground",
+                          )}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 self-end">
+                    {sharedGroups.length > 1 && (
+                      <Button type="button" variant="outline" size="sm" onClick={applyToAllGroups}>
+                        Aplicar a todos los grupos
+                      </Button>
+                    )}
+                    {individualGroups.length > 1 && (
+                      <Button type="button" variant="outline" size="sm" onClick={applyToAllIndividual}>
+                        Aplicar a todos los individuales
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {visibleGroups.map((g) => (
+                      <GroupStockRow
+                        key={g.id}
+                        group={g}
+                        allProducts={allProducts}
+                        selected={
+                          new Set(Object.entries(productGroupId).filter(([, gid]) => gid === g.id).map(([pid]) => pid))
+                        }
+                        onApplyMembers={(ids) => applyGroupAssignment(g.id, ids)}
+                        qty={groupQty[g.id] ?? { unlimited: true, value: "" }}
+                        onChange={(qty) => setGroupQty((prev) => ({ ...prev, [g.id]: qty }))}
+                      />
+                    ))}
+                    {visibleGroups.length === 0 && (
+                      <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                        Nada coincide con la búsqueda o el filtro.
+                      </p>
+                    )}
+                  </div>
+                </>
               )}
-              <div className="flex flex-col gap-3">
-                {effectiveGroups.map((g) => (
-                  <GroupStockRow
-                    key={g.id}
-                    group={g}
-                    allProducts={allProducts}
-                    selected={
-                      new Set(Object.entries(productGroupId).filter(([, gid]) => gid === g.id).map(([pid]) => pid))
-                    }
-                    onApplyMembers={(ids) => applyGroupAssignment(g.id, ids)}
-                    qty={groupQty[g.id] ?? { unlimited: true, value: "" }}
-                    onChange={(qty) => setGroupQty((prev) => ({ ...prev, [g.id]: qty }))}
-                  />
-                ))}
-              </div>
             </div>
           )}
 
-          {stockMode === "BY_PRODUCT" && (
-            <div className="flex flex-col gap-4 border-t pt-4">
-              {flatProducts.length > 1 && (
-                <Button type="button" variant="outline" size="sm" onClick={applyToAllProducts} className="self-end">
-                  Aplicar a todos
-                </Button>
-              )}
-              {flatProducts.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Todavía no hay productos activos. Cargalos primero en Productos.
-                </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {flatProducts.map((p) => (
-                  <ProductStockRow
-                    key={p.id}
-                    product={p}
-                    qty={productQty[p.id] ?? { unlimited: true, value: "" }}
-                    onChange={(qty) => setProductQty((prev) => ({ ...prev, [p.id]: qty }))}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </TabsContent>
 
         {pickupEnabled && (
@@ -793,13 +811,24 @@ function GroupStockRow({
   return (
     <div className="flex flex-col gap-2.5 rounded-md border p-3">
       <div className="flex items-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-sm font-medium">{group.name}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium">{group.name}</span>
+            {group.productNames.length > 1 ? (
+              <Badge variant="secondary" className="shrink-0 text-[0.65rem]">
+                Grupo
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="shrink-0 text-[0.65rem]">
+                Individual
+              </Badge>
+            )}
+          </div>
           <span className="truncate text-xs text-muted-foreground">
             {group.productNames.length > 1
               ? `Compartido entre: ${group.productNames.join(", ")}`
               : isPendingSolo
-                ? "Individual (sin guardar)"
+                ? "Sin guardar todavía"
                 : group.productNames[0]}
           </span>
         </div>
@@ -931,92 +960,5 @@ function GroupMembersButton({
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function ProductStockRow({
-  product,
-  qty,
-  onChange,
-}: {
-  product: FlatProduct;
-  qty: QtyState;
-  onChange: (qty: QtyState) => void;
-}) {
-  const prompt = usePrompt();
-  const sold = product.quantitySold;
-  const hasValue = !qty.unlimited && qty.value.trim() !== "";
-  const available = hasValue ? Math.max(0, Number(qty.value) || 0) : null;
-  const remaining = available == null ? null : Math.max(0, available - sold);
-  const overSold = available != null && available < sold;
-
-  async function adjustStock() {
-    const raw = await prompt({
-      title: `Stock de "${product.name}"`,
-      description: hasValue
-        ? `Hay ${available} cargadas, ${sold} vendidas — quedan ${remaining}. Sumá unidades, o restá con un número negativo (ej: -5).`
-        : "¿Cuántas unidades cargás para esta fecha?",
-      label: "Cantidad",
-      type: "number",
-      placeholder: "Ej: 20",
-      confirmLabel: "Aplicar",
-    });
-    if (raw == null || raw.trim() === "") return;
-    const delta = Number(raw);
-    if (!Number.isFinite(delta) || delta === 0) return;
-    const base = available ?? 0;
-    onChange({ unlimited: false, value: String(Math.max(0, base + delta)) });
-  }
-
-  return (
-    <div className="flex flex-col gap-2 rounded-md border p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium">{product.name}</span>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-muted-foreground">
-              Vendidas: <span className="font-semibold text-foreground">{sold}</span>
-            </span>
-            {qty.unlimited ? (
-              <span className="text-muted-foreground">Sin límite</span>
-            ) : hasValue ? (
-              <>
-                <span className="text-muted-foreground">
-                  Cargadas: <span className="font-semibold text-foreground">{available}</span>
-                </span>
-                <span className={cn("font-semibold", overSold || remaining === 0 ? "text-destructive" : "text-primary")}>
-                  Quedan: {remaining}
-                </span>
-              </>
-            ) : (
-              <span className="font-medium text-destructive">Sin stock cargado</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={qty.unlimited}
-              onChange={(e) => onChange({ unlimited: e.target.checked, value: e.target.checked ? "" : qty.value })}
-            />
-            Sin límite
-          </label>
-
-          {!qty.unlimited && (
-            <Button type="button" variant={hasValue ? "outline" : "default"} size="sm" onClick={adjustStock}>
-              {hasValue ? "Ajustar stock" : "Cargar stock"}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {overSold && (
-        <p className="text-xs text-destructive">
-          Ya se vendieron {sold} — no puede quedar por debajo de eso.
-        </p>
-      )}
-    </div>
   );
 }

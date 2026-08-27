@@ -20,7 +20,7 @@ import { toWhatsAppLink } from "@/lib/social-links";
 import type { CatalogProduct } from "./catalog";
 import { WhatsAppIcon } from "./social-icons";
 import { useQuickAdd } from "./use-quick-add";
-import { checkRemainingStock } from "./stock-actions";
+import { checkRemainingStock, checkRemainingStockForVariants } from "./stock-actions";
 
 export function AddToCartSheet({
   product,
@@ -67,27 +67,39 @@ export function AddToCartSheet({
   const variant = displayProduct.variants.find((v) => v.id === variantId);
   const total = variant ? variant.price * quantity : 0;
   // Cuánto se puede sumar todavía, descontando lo que ya haya en el
-  // carrito para este producto o para sus hermanos de pozo compartido.
+  // carrito para esta variante o para sus hermanas de pozo compartido.
   const addRoom = variant
-    ? roomToAdd(cart.items, displayProduct.stockGroupId, variant.remaining, variant.id)
+    ? roomToAdd(cart.items, variant.stockGroupId, variant.remaining, variant.id)
     : 0;
   const hasMultipleVariants = displayProduct.variants.length > 1;
 
-  // El stock se trackea por producto (o por grupo), no por variante — todas
-  // comparten el mismo remanente, así que el margen es uno solo para todo
-  // el diálogo, repartido entre las filas que el cliente vaya eligiendo.
-  const sharedRemaining = displayProduct.variants[0]?.remaining ?? 0;
-  const sharedAddRoom = roomToAdd(cart.items, displayProduct.stockGroupId, sharedRemaining);
+  // Cada variante puede tener su propio pozo de stock, o compartirlo con
+  // otras — acá se descuenta lo que ya haya en el carrito real Y lo que se
+  // vaya apilando en ESTE diálogo para otras variantes del mismo pozo.
+  function roomForVariant(v: CatalogProduct["variants"][number]) {
+    const cartRoom = roomToAdd(cart.items, v.stockGroupId, v.remaining, v.id);
+    const stagedElsewhere = v.stockGroupId
+      ? displayProduct!.variants
+          .filter((x) => x.id !== v.id && x.stockGroupId === v.stockGroupId)
+          .reduce((sum, x) => sum + (variantQty[x.id] ?? 0), 0)
+      : 0;
+    return Math.max(0, cartRoom - stagedElsewhere);
+  }
+
   const totalVariantQty = Object.values(variantQty).reduce((s, q) => s + q, 0);
   const totalVariantPrice = displayProduct.variants.reduce(
     (s, v) => s + (variantQty[v.id] ?? 0) * v.price,
     0,
   );
+  const anyVariantHasRoom = displayProduct.variants.some((v) => roomForVariant(v) > 0);
 
   function incVariant(id: string) {
+    const v = displayProduct!.variants.find((x) => x.id === id);
+    if (!v) return;
+    const room = roomForVariant(v);
     setVariantQty((prev) => {
       const current = prev[id] ?? 0;
-      if (totalVariantQty >= sharedAddRoom) return prev;
+      if (current >= room) return prev;
       return { ...prev, [id]: current + 1 };
     });
   }
@@ -106,18 +118,24 @@ export function AddToCartSheet({
     if (entries.length === 0) return;
 
     setChecking(true);
-    const fresh = await checkRemainingStock(deliveryDateId, displayProduct.id);
+    const fresh = await checkRemainingStockForVariants(
+      deliveryDateId,
+      entries.map(([id]) => id),
+    );
     setChecking(false);
 
-    const room = roomToAdd(cart.items, displayProduct.stockGroupId, fresh);
-    const totalRequested = entries.reduce((s, [, q]) => s + q, 0);
-    if (room <= 0) {
-      toast.error(`Se agotó el stock de "${displayProduct.name}".`);
-      return;
-    }
-    if (totalRequested > room) {
-      toast.error(`Solo quedan ${room} disponibles de "${displayProduct.name}".`);
-      return;
+    for (const [id, qty] of entries) {
+      const v = displayProduct.variants.find((x) => x.id === id)!;
+      const freshRemaining = fresh[id] ?? 0;
+      const room = roomToAdd(cart.items, v.stockGroupId, freshRemaining, v.id);
+      if (room <= 0) {
+        toast.error(`Se agotó el stock de "${v.label}".`);
+        return;
+      }
+      if (qty > room) {
+        toast.error(`Solo quedan ${room} disponibles de "${v.label}".`);
+        return;
+      }
     }
 
     function payloadFor(variantId: string) {
@@ -129,8 +147,8 @@ export function AddToCartSheet({
         variantLabel: v.label,
         unitPrice: v.price,
         imageUrl: displayProduct!.imageUrl,
-        maxQuantity: fresh,
-        stockGroupId: displayProduct!.stockGroupId,
+        maxQuantity: fresh[variantId] ?? 0,
+        stockGroupId: v.stockGroupId,
       };
     }
 
@@ -170,9 +188,9 @@ export function AddToCartSheet({
   async function handleAdd() {
     if (!displayProduct || !variant) return;
     setChecking(true);
-    const fresh = await checkRemainingStock(deliveryDateId, displayProduct.id);
+    const fresh = await checkRemainingStock(deliveryDateId, variant.id);
     setChecking(false);
-    const room = roomToAdd(cart.items, displayProduct.stockGroupId, fresh, variant.id);
+    const room = roomToAdd(cart.items, variant.stockGroupId, fresh, variant.id);
     if (room <= 0) {
       toast.error(`Se agotó el stock de "${displayProduct.name}".`);
       return;
@@ -191,7 +209,7 @@ export function AddToCartSheet({
         unitPrice: variant.price,
         imageUrl: displayProduct.imageUrl,
         maxQuantity: fresh,
-        stockGroupId: displayProduct.stockGroupId,
+        stockGroupId: variant.stockGroupId,
       },
       quantity,
     );
@@ -280,6 +298,7 @@ export function AddToCartSheet({
             <div className="flex flex-col gap-2">
               {displayProduct.variants.map((v) => {
                 const qty = variantQty[v.id] ?? 0;
+                const room = roomForVariant(v);
                 return (
                   <div key={v.id} className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
                     <div className="flex min-w-0 flex-col">
@@ -289,30 +308,34 @@ export function AddToCartSheet({
                       )}
                     </div>
                     {!readOnly && !displayProduct.contactToBuy && (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={qty <= 0}
-                          onClick={() => decVariant(v.id)}
-                          className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground disabled:opacity-40"
-                        >
-                          <MinusIcon className="size-3.5" />
-                        </button>
-                        <span className="w-5 text-center text-sm font-semibold tabular-nums">{qty}</span>
-                        <button
-                          type="button"
-                          disabled={totalVariantQty >= sharedAddRoom}
-                          onClick={() => incVariant(v.id)}
-                          className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
-                        >
-                          <PlusIcon className="size-3.5" />
-                        </button>
-                      </div>
+                      room <= 0 ? (
+                        <span className="shrink-0 text-xs text-muted-foreground">Sin stock</span>
+                      ) : (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={qty <= 0}
+                            onClick={() => decVariant(v.id)}
+                            className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground disabled:opacity-40"
+                          >
+                            <MinusIcon className="size-3.5" />
+                          </button>
+                          <span className="w-5 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                          <button
+                            type="button"
+                            disabled={qty >= room}
+                            onClick={() => incVariant(v.id)}
+                            className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+                          >
+                            <PlusIcon className="size-3.5" />
+                          </button>
+                        </div>
+                      )
                     )}
                   </div>
                 );
               })}
-              {!readOnly && !displayProduct.contactToBuy && sharedAddRoom <= 0 && (
+              {!readOnly && !displayProduct.contactToBuy && !anyVariantHasRoom && (
                 <p className="text-center text-xs text-muted-foreground">
                   No queda stock disponible para este producto.
                 </p>

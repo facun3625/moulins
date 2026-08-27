@@ -29,15 +29,14 @@ export default async function ProductsPage({
       where,
       include: {
         category: true,
-        stockGroup: { include: { _count: { select: { products: true } } } },
         images: { orderBy: { order: "asc" }, take: 1 },
-        variants: true,
+        variants: { include: { stockGroup: { include: { _count: { select: { variants: true } } } } } },
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.productCategory.findMany({ orderBy: { name: "asc" } }),
     prisma.stockGroup.findMany({
-      include: { _count: { select: { products: true } } },
+      include: { _count: { select: { variants: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.storeConfig.findUniqueOrThrow({ where: { id: 1 } }),
@@ -55,7 +54,7 @@ export default async function ProductsPage({
               id: g.id,
               name: g.name,
               defaultStockQuantity: g.defaultStockQuantity,
-              productCount: g._count.products,
+              productCount: g._count.variants,
             }))}
           />
           <CategoryManager
@@ -86,6 +85,17 @@ export default async function ProductsPage({
           const minPrice = prices.length ? Math.min(...prices) : null;
           const maxPrice = prices.length ? Math.max(...prices) : null;
           const image = product.images[0];
+
+          const distinctGroups = new Map(product.variants.map((v) => [v.stockGroupId, v.stockGroup]));
+          const stockLabel =
+            distinctGroups.size === 1
+              ? (() => {
+                  const [group] = distinctGroups.values();
+                  return group._count.variants > 1 ? `grupo: ${group.name}` : null;
+                })()
+              : distinctGroups.size > 1
+                ? "stock por variante"
+                : null;
 
           return (
             <Link
@@ -122,7 +132,7 @@ export default async function ProductsPage({
                 <span className="truncate text-xs text-muted-foreground">
                   {product.category.name} · {product.variants.length}{" "}
                   {product.variants.length === 1 ? "variante" : "variantes"}
-                  {product.stockGroup._count.products > 1 && ` · grupo: ${product.stockGroup.name}`}
+                  {stockLabel && ` · ${stockLabel}`}
                 </span>
               </div>
               <div className="flex flex-col items-end gap-2">

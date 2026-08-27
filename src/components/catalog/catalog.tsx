@@ -21,9 +21,8 @@ export type CatalogProduct = {
   categoryName: string;
   imageUrl: string | null;
   images: string[];
-  stockGroupId: string | null;
   contactToBuy: boolean;
-  variants: { id: string; label: string; price: number; remaining: number }[];
+  variants: { id: string; label: string; price: number; remaining: number; stockGroupId: string | null }[];
 };
 
 export function Catalog({

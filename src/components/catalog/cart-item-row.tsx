@@ -20,7 +20,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
   async function handleIncrement() {
     if (!cart.deliveryDateId) return;
     setChecking(true);
-    const fresh = await checkRemainingStock(cart.deliveryDateId, item.productId);
+    const fresh = await checkRemainingStock(cart.deliveryDateId, item.productVariantId);
     setChecking(false);
     const room = roomToAdd(cart.items, item.stockGroupId, fresh, item.productVariantId);
     if (room <= 0) {

@@ -8,15 +8,14 @@ export type StockAlert = {
   outOfStockNames: string[];
 };
 
-// Fechas abiertas (tomando pedidos ahora) donde algún grupo de stock o
-// producto con tope cargado ya se agotó — para avisarle al admin antes de
-// que se entere por un cliente que no pudo comprar.
+// Fechas abiertas (tomando pedidos ahora) donde algún pozo de stock con
+// tope cargado ya se agotó — para avisarle al admin antes de que se entere
+// por un cliente que no pudo comprar.
 export async function getStockAlerts(): Promise<StockAlert[]> {
   const openDates = await prisma.deliveryDate.findMany({
     where: { status: "OPEN" },
     include: {
       stockGroupStock: { include: { stockGroup: true } },
-      productStock: { include: { product: true } },
     },
     orderBy: { date: "asc" },
   });
@@ -27,11 +26,6 @@ export async function getStockAlerts(): Promise<StockAlert[]> {
     for (const sgs of d.stockGroupStock) {
       if (sgs.quantityAvailable != null && sgs.quantitySold >= sgs.quantityAvailable) {
         outOfStockNames.push(sgs.stockGroup.name);
-      }
-    }
-    for (const ps of d.productStock) {
-      if (ps.quantityAvailable != null && ps.quantitySold >= ps.quantityAvailable) {
-        outOfStockNames.push(ps.product.name);
       }
     }
     if (outOfStockNames.length > 0) {

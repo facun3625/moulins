@@ -21,10 +21,17 @@ export default async function EditProductPage({
       },
     }),
     prisma.productCategory.findMany({ orderBy: { name: "asc" } }),
-    prisma.stockGroup.findMany({ orderBy: { name: "asc" } }),
+    // Solo los pozos con 2+ miembros sirven para "compartir" — los
+    // individuales de otras variantes no se listan acá.
+    prisma.stockGroup.findMany({
+      include: { _count: { select: { variants: true } } },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   if (!product) notFound();
+
+  const sharedStockGroups = stockGroups.filter((g) => g._count.variants > 1);
 
   return (
     <ProductEditor
@@ -34,7 +41,6 @@ export default async function EditProductPage({
         name: product.name,
         description: product.description,
         categoryId: product.categoryId,
-        stockGroupId: product.stockGroupId,
         active: product.active,
         featured: product.featured,
         contactToBuy: product.contactToBuy,
@@ -46,11 +52,12 @@ export default async function EditProductPage({
           sku: v.sku,
           price: v.price.toString(),
           active: v.active,
+          stockGroupId: v.stockGroupId,
         })),
         images: product.images.map((i) => ({ id: i.id, url: i.url })),
       }}
       categories={categories}
-      stockGroups={stockGroups.map((g) => ({ id: g.id, name: g.name }))}
+      stockGroups={sharedStockGroups.map((g) => ({ id: g.id, name: g.name }))}
     />
   );
 }

@@ -12,12 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAdminTheme } from "@/components/admin/admin-theme-root";
+import { cn } from "@/lib/utils";
 import { createProduct } from "../actions";
 import { CategorySelect } from "./category-select";
-import { StockGroupPicker } from "../stock-group-picker";
+import { StockGroupPicker, type StockGroupSelection } from "../stock-group-picker";
 
 type NewImage = { key: string; file: File; previewUrl: string };
-type VariantRow = { key: string; gusto: string; tamano: string; price: string };
+// stockGroupId: id real (compartir con un grupo existente), "__solo__"
+// (pozo propio) o "__siblings__" (comparte un pozo nuevo con las demás
+// variantes de esta tanda que también digan "__siblings__" — el default).
+type VariantRow = { key: string; gusto: string; tamano: string; price: string; stockGroupId: string };
 
 let keySeed = 0;
 function nextKey() {
@@ -46,6 +52,7 @@ export function NewProductForm({
   const [images, setImages] = useState<NewImage[]>([]);
   const [variantsMode, setVariantsMode] = useState(false);
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
+  const [simpleStock, setSimpleStock] = useState<StockGroupSelection>({ mode: "individual", sharedGroupId: "" });
   const [active, setActive] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [contactToBuy, setContactToBuy] = useState(false);
@@ -55,14 +62,17 @@ export function NewProductForm({
     setVariantsMode(true);
     if (variantRows.length === 0) {
       setVariantRows([
-        { key: nextKey(), gusto: "", tamano: "", price: "" },
-        { key: nextKey(), gusto: "", tamano: "", price: "" },
+        { key: nextKey(), gusto: "", tamano: "", price: "", stockGroupId: "__siblings__" },
+        { key: nextKey(), gusto: "", tamano: "", price: "", stockGroupId: "__siblings__" },
       ]);
     }
   }
 
   function addVariantRow() {
-    setVariantRows((prev) => [...prev, { key: nextKey(), gusto: "", tamano: "", price: "" }]);
+    setVariantRows((prev) => [
+      ...prev,
+      { key: nextKey(), gusto: "", tamano: "", price: "", stockGroupId: "__siblings__" },
+    ]);
   }
 
   function updateVariantRow(key: string, patch: Partial<VariantRow>) {
@@ -118,7 +128,7 @@ export function NewProductForm({
     if (!form) return;
     const formData = new FormData(form);
 
-    let variantsPayload: { gusto: string; tamano: string; price: string }[];
+    let variantsPayload: { gusto: string; tamano: string; price: string; stockGroupId: string }[];
     if (variantsMode) {
       if (!contactToBuy) {
         for (const v of variantRows) {
@@ -133,6 +143,7 @@ export function NewProductForm({
         gusto: v.gusto.trim(),
         tamano: v.tamano.trim(),
         price: contactToBuy && !(Number(v.price) > 0) ? "1" : v.price,
+        stockGroupId: v.stockGroupId,
       }));
     } else {
       const price = formData.get("price");
@@ -140,7 +151,14 @@ export function NewProductForm({
         toast.error("Ingresá un precio");
         return;
       }
-      variantsPayload = [{ gusto: "", tamano: "", price: price && Number(price) > 0 ? String(price) : "1" }];
+      variantsPayload = [
+        {
+          gusto: "",
+          tamano: "",
+          price: price && Number(price) > 0 ? String(price) : "1",
+          stockGroupId: simpleStock.mode === "individual" ? "__solo__" : simpleStock.sharedGroupId,
+        },
+      ];
     }
     formData.set("variants", JSON.stringify(variantsPayload));
     formData.set("active", String(active));
@@ -174,7 +192,9 @@ export function NewProductForm({
 
           <CategorySelect categories={categories} />
 
-          <StockGroupPicker groups={stockGroups} />
+          {!variantsMode && (
+            <StockGroupPicker groups={stockGroups} value={simpleStock} onChange={setSimpleStock} />
+          )}
 
           {variantsMode ? (
             <div className="flex flex-col gap-2">
@@ -184,40 +204,47 @@ export function NewProductForm({
                   ? "Con \"Consultar por WhatsApp\" activado el precio no se muestra — solo importan los nombres."
                   : "Un precio por cada gusto o tamaño. Podés agregar más después desde el editor."}
               </p>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {variantRows.map((v) => (
-                  <div key={v.key} className="flex items-center gap-2">
-                    <Input
-                      value={v.gusto}
-                      onChange={(e) => updateVariantRow(v.key, { gusto: e.target.value })}
-                      placeholder="Gusto (opcional)"
-                      className="min-w-0 flex-1"
-                    />
-                    <Input
-                      value={v.tamano}
-                      onChange={(e) => updateVariantRow(v.key, { tamano: e.target.value })}
-                      placeholder="Tamaño (opcional)"
-                      className="min-w-0 flex-1"
-                    />
-                    {!contactToBuy && (
+                  <div key={v.key} className="flex flex-col gap-1.5 rounded-lg border p-2">
+                    <div className="flex items-center gap-2">
                       <Input
-                        value={v.price}
-                        onChange={(e) => updateVariantRow(v.key, { price: e.target.value })}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        placeholder="Precio"
-                        className="w-24 shrink-0"
+                        value={v.gusto}
+                        onChange={(e) => updateVariantRow(v.key, { gusto: e.target.value })}
+                        placeholder="Gusto (opcional)"
+                        className="min-w-0 flex-1"
                       />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeVariantRow(v.key)}
-                      className="shrink-0 rounded p-1.5 text-muted-foreground hover:text-destructive"
-                      aria-label="Quitar variante"
-                    >
-                      <Trash2Icon className="size-4" />
-                    </button>
+                      <Input
+                        value={v.tamano}
+                        onChange={(e) => updateVariantRow(v.key, { tamano: e.target.value })}
+                        placeholder="Tamaño (opcional)"
+                        className="min-w-0 flex-1"
+                      />
+                      {!contactToBuy && (
+                        <Input
+                          value={v.price}
+                          onChange={(e) => updateVariantRow(v.key, { price: e.target.value })}
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          placeholder="Precio"
+                          className="w-24 shrink-0"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeVariantRow(v.key)}
+                        className="shrink-0 rounded p-1.5 text-muted-foreground hover:text-destructive"
+                        aria-label="Quitar variante"
+                      >
+                        <Trash2Icon className="size-4" />
+                      </button>
+                    </div>
+                    <VariantStockControl
+                      value={v.stockGroupId}
+                      onChange={(stockGroupId) => updateVariantRow(v.key, { stockGroupId })}
+                      groups={stockGroups}
+                    />
                   </div>
                 ))}
               </div>
@@ -356,5 +383,79 @@ export function NewProductForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+// Stock por variante al crear varias de una: por defecto todas comparten un
+// pozo nuevo entre sí ("Con las demás"), pero cada una puede separarse a su
+// propio pozo ("Individual") o sumarse a un grupo ya existente.
+function VariantStockControl({
+  value,
+  onChange,
+  groups,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  groups: { id: string; name: string }[];
+}) {
+  const { containerRef } = useAdminTheme();
+  const mode = value === "__solo__" ? "individual" : value === "__siblings__" ? "siblings" : "shared";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={() => onChange("__siblings__")}
+          className={cn(
+            "flex-1 rounded-md border px-2 py-1 text-center text-[0.65rem] font-medium transition-colors",
+            mode === "siblings"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground",
+          )}
+        >
+          Con las demás
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("__solo__")}
+          className={cn(
+            "flex-1 rounded-md border px-2 py-1 text-center text-[0.65rem] font-medium transition-colors",
+            mode === "individual"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground",
+          )}
+        >
+          Individual
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(groups.some((g) => g.id === value) ? value : (groups[0]?.id ?? "__solo__"))}
+          disabled={groups.length === 0}
+          className={cn(
+            "flex-1 rounded-md border px-2 py-1 text-center text-[0.65rem] font-medium transition-colors disabled:opacity-40",
+            mode === "shared"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground",
+          )}
+        >
+          Compartir con...
+        </button>
+      </div>
+      {mode === "shared" && (
+        <Select value={value} onValueChange={(v) => onChange(String(v))}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Elegí un grupo">{groups.find((g) => g.id === value)?.name}</SelectValue>
+          </SelectTrigger>
+          <SelectContent container={containerRef}>
+            {groups.map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
   );
 }

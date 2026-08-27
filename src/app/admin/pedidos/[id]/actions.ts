@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import type { OrderStatus } from "@/generated/prisma/client";
-import { logGroupStockMovement, logProductStockMovement } from "@/lib/stock-movements";
+import { logGroupStockMovement } from "@/lib/stock-movements";
 import { awardPointsForOrder, reversePointsForOrder } from "@/lib/points";
 
 // Los tres estados "activos" del pedido se pueden reasignar libremente
@@ -18,19 +18,14 @@ const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING"];
 async function restoreStockForOrder(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], orderId: string) {
   const items = await tx.orderItem.findMany({
     where: { orderId },
-    include: { productVariant: { include: { product: true } } },
+    include: { productVariant: true },
   });
   const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
 
-  // El pedido se descontó de un solo lado (grupo o producto, según el modo
-  // de la fecha en ese momento) — intentar los dos es inofensivo.
   const byGroup = new Map<string, number>();
-  const byProduct = new Map<string, number>();
   for (const item of items) {
-    const groupId = item.productVariant.product.stockGroupId;
+    const groupId = item.productVariant.stockGroupId;
     byGroup.set(groupId, (byGroup.get(groupId) ?? 0) + item.quantity);
-    const productId = item.productVariant.productId;
-    byProduct.set(productId, (byProduct.get(productId) ?? 0) + item.quantity);
   }
   for (const [stockGroupId, quantity] of byGroup) {
     await tx.stockGroupStock.updateMany({
@@ -40,19 +35,6 @@ async function restoreStockForOrder(tx: Parameters<Parameters<typeof prisma.$tra
     await logGroupStockMovement(tx, {
       deliveryDateId: order.deliveryDateId,
       stockGroupId,
-      reason: "RESTOCK",
-      delta: quantity,
-      note: `Pedido ${order.id} cancelado`,
-    });
-  }
-  for (const [productId, quantity] of byProduct) {
-    await tx.productStock.updateMany({
-      where: { productId, deliveryDateId: order.deliveryDateId },
-      data: { quantitySold: { decrement: quantity } },
-    });
-    await logProductStockMovement(tx, {
-      deliveryDateId: order.deliveryDateId,
-      productId,
       reason: "RESTOCK",
       delta: quantity,
       note: `Pedido ${order.id} cancelado`,

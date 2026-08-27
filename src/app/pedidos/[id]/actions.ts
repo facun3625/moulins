@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveScheduledSalesAvailability, resolveWeeklyAvailability } from "@/lib/availability";
-import { getRemainingForProduct } from "@/lib/stock";
+import { getRemainingForVariant } from "@/lib/stock";
 
 export type RepeatOrderItem = {
   productVariantId: string;
@@ -59,7 +59,7 @@ export async function getRepeatOrderItems(orderId: string): Promise<RepeatOrderR
     // Los productos "a consulta" no se pueden repetir solos — hay que
     // volver a coordinar el precio por WhatsApp.
     const unavailableBase = !product.active || !variant.active || product.contactToBuy;
-    const remaining = unavailableBase ? 0 : await getRemainingForProduct(deliveryDateId, product.id);
+    const remaining = unavailableBase ? 0 : await getRemainingForVariant(deliveryDateId, variant.id);
 
     items.push({
       productVariantId: variant.id,
@@ -69,7 +69,7 @@ export async function getRepeatOrderItems(orderId: string): Promise<RepeatOrderR
       unitPrice: Number(variant.price),
       imageUrl: product.images[0]?.url ?? null,
       maxQuantity: remaining,
-      stockGroupId: product.stockGroupId,
+      stockGroupId: variant.stockGroupId,
       requestedQuantity: orderItem.quantity,
       addableQuantity: Math.min(orderItem.quantity, remaining),
       unavailable: unavailableBase || remaining <= 0,

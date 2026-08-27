@@ -7,7 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { seedDefaultStock, toDateAtNoon } from "@/lib/schedule";
-import { logGroupStockMovement, logProductStockMovement } from "@/lib/stock-movements";
+import { logGroupStockMovement } from "@/lib/stock-movements";
 
 const deliveryDateSchema = z.object({
   date: z.string().min(1, "Elegí una fecha"),
@@ -59,13 +59,13 @@ export async function createDeliveryDate(formData: FormData) {
 
 // Guarda de una sola vez TODO lo que se tocó en la pantalla de la fecha:
 // datos (estado, horarios, capacidad, notas), modalidad de stock, el stock
-// cargado (grupos o productos, según la modalidad elegida), a qué grupo
-// pertenece cada producto, y las franjas especiales — un solo botón
-// "Guardar cambios" para toda la pantalla, nada se persiste antes de eso.
+// cargado por pozo, a qué pozo pertenece cada variante, y las franjas
+// especiales — un solo botón "Guardar cambios" para toda la pantalla, nada
+// se persiste antes de eso.
 const saveDeliveryDateSchema = deliveryDateSchema.extend({
   open: z.string(),
-  stockMode: z.enum(["BY_GROUP", "BY_PRODUCT", "UNLIMITED"]),
-  // productId -> groupId real, o "__solo__" para pedir un grupo individual nuevo.
+  stockMode: z.enum(["BY_GROUP", "UNLIMITED"]),
+  // variantId -> groupId real, o "__solo__" para pedir un pozo individual nuevo.
   groupAssignments: z.string().optional(),
   // { added: string[] (labels nuevos), removedIds: string[] (franjas existentes a borrar) }
   pickupSlots: z.string().optional(),
@@ -91,7 +91,6 @@ export async function saveDeliveryDate(id: string, formData: FormData) {
   assertCutoffNotAfterDelivery(parsed.date, parsed.cutoffAt);
 
   const groupEntries = Array.from(formData.entries()).filter(([key]) => key.startsWith("stockgroup_"));
-  const productEntries = Array.from(formData.entries()).filter(([key]) => key.startsWith("product_"));
 
   const groupAssignments: Record<string, { target: string; quantity?: string }> = parsed.groupAssignments
     ? JSON.parse(parsed.groupAssignments)
@@ -138,37 +137,19 @@ export async function saveDeliveryDate(id: string, formData: FormData) {
       });
     }
 
-    for (const [key, value] of productEntries) {
-      const productId = key.replace("product_", "");
-      const raw = String(value).trim();
-      const quantityAvailable = raw === "" ? null : Math.max(0, Number(raw) || 0);
-      const before = await tx.productStock.findUnique({
-        where: { productId_deliveryDateId: { productId, deliveryDateId: id } },
+    for (const [variantId, entry] of Object.entries(groupAssignments)) {
+      const variant = await tx.productVariant.findUnique({
+        where: { id: variantId },
+        include: { product: true },
       });
-      if (before && before.quantityAvailable === quantityAvailable) continue;
-      if (quantityAvailable != null && quantityAvailable < (before?.quantitySold ?? 0)) {
-        throw new Error("El stock disponible no puede quedar por debajo de lo ya vendido");
-      }
-      await tx.productStock.upsert({
-        where: { productId_deliveryDateId: { productId, deliveryDateId: id } },
-        update: { quantityAvailable },
-        create: { productId, deliveryDateId: id, quantityAvailable },
-      });
-      await logProductStockMovement(tx, {
-        deliveryDateId: id,
-        productId,
-        reason: "ADJUSTMENT",
-        delta: adjustmentDelta(before?.quantityAvailable ?? null, quantityAvailable),
-      });
-    }
-
-    for (const [productId, entry] of Object.entries(groupAssignments)) {
-      const product = await tx.product.findUnique({ where: { id: productId } });
-      if (!product) continue;
+      if (!variant) continue;
+      const label = [variant.product.name, [variant.gusto, variant.tamano].filter(Boolean).join(" · ")]
+        .filter(Boolean)
+        .join(" — ");
 
       let targetGroupId = entry.target;
       if (entry.target === "__solo__") {
-        let name = product.name;
+        let name = label;
         let attempt = 1;
         let soloId: string | null = null;
         while (soloId == null) {
@@ -177,7 +158,7 @@ export async function saveDeliveryDate(id: string, formData: FormData) {
             soloId = solo.id;
           } catch {
             attempt += 1;
-            name = `${product.name} (${attempt})`;
+            name = `${label} (${attempt})`;
             if (attempt > 20) throw new Error("No se pudo crear el grupo individual");
           }
         }
@@ -187,7 +168,7 @@ export async function saveDeliveryDate(id: string, formData: FormData) {
         if (!group) continue;
       }
 
-      await tx.product.update({ where: { id: productId }, data: { stockGroupId: targetGroupId } });
+      await tx.productVariant.update({ where: { id: variantId }, data: { stockGroupId: targetGroupId } });
 
       if (entry.quantity !== undefined) {
         const raw = entry.quantity.trim();
