@@ -20,8 +20,10 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 
 export function OrdersFilterBar({
   deliveryDates,
+  productionMode = false,
 }: {
   deliveryDates: { id: string; date: string }[];
+  productionMode?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,11 +52,11 @@ export function OrdersFilterBar({
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  const hasFilters = ["q", "fecha", "estado", "tipo", "pago"].some((k) => searchParams.get(k));
+  const hasFilters = (productionMode ? ["fecha", "tipo"] : ["q", "fecha", "estado", "tipo", "pago"]).some((k) => searchParams.get(k));
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative">
+      {!productionMode && <div className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={q}
@@ -62,7 +64,7 @@ export function OrdersFilterBar({
           placeholder="Buscar por comprador, email o teléfono"
           className="pl-9"
         />
-      </div>
+      </div>}
 
       <div className="flex flex-wrap gap-2">
         <Select
@@ -89,7 +91,7 @@ export function OrdersFilterBar({
           </SelectContent>
         </Select>
 
-        <Select
+        {!productionMode && <Select
           items={[
             { value: "all", label: "Todos los estados" },
             ...Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => ({ value, label })),
@@ -108,7 +110,7 @@ export function OrdersFilterBar({
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select>}
 
         <Select
           items={[
@@ -131,7 +133,7 @@ export function OrdersFilterBar({
           </SelectContent>
         </Select>
 
-        <Select
+        {!productionMode && <Select
           items={[
             { value: "all", label: "Todos los medios" },
             ...Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({ value, label })),
@@ -150,7 +152,7 @@ export function OrdersFilterBar({
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select>}
 
         {hasFilters && (
           <Button
@@ -159,7 +161,8 @@ export function OrdersFilterBar({
             size="sm"
             onClick={() => {
               setQ("");
-              router.push(pathname);
+              const view = searchParams.get("vista");
+              router.push(view ? `${pathname}?vista=${view}` : pathname);
             }}
           >
             <XIcon className="size-3.5" />

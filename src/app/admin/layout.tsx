@@ -32,10 +32,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <ConfirmProvider>
         <PromptProvider>
           <aside className="hidden bg-sidebar h-full overflow-y-auto w-64 shrink-0 border-r border-sidebar-border print:hidden lg:flex lg:flex-col">
-            <AdminSidebar newInquiryCount={newInquiryCount} />
+            <AdminSidebar newInquiryCount={newInquiryCount} newOrderCount={pendingOrderCount} />
           </aside>
           <div className="flex min-w-0 min-h-0 flex-1 flex-col h-full overflow-hidden">
-            <AdminTopbar storeOpen={storeConfig.storeOpen} stockAlerts={stockAlerts} newInquiryCount={newInquiryCount} notificationCount={newInquiryCount + pendingOrderCount} notifications={notifications} />
+            <AdminTopbar storeOpen={storeConfig.storeOpen} stockAlerts={stockAlerts} newInquiryCount={newInquiryCount} newOrderCount={pendingOrderCount} notificationCount={newInquiryCount + pendingOrderCount} notifications={notifications} />
             <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 lg:px-8 print:p-0">{children}</main>
           </div>
         </PromptProvider>

@@ -50,7 +50,7 @@ const sections = [
   { href: "/admin/configuracion", label: "Configuración", icon: SettingsIcon },
 ];
 
-export function AdminSidebar({ onNavigate, newInquiryCount = 0 }: { onNavigate?: () => void; newInquiryCount?: number }) {
+export function AdminSidebar({ onNavigate, newInquiryCount = 0, newOrderCount = 0 }: { onNavigate?: () => void; newInquiryCount?: number; newOrderCount?: number }) {
   const { storeName, logoUrl } = useStoreSettings();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -105,6 +105,7 @@ export function AdminSidebar({ onNavigate, newInquiryCount = 0 }: { onNavigate?:
                 <Icon className="size-4 shrink-0" />
                 <span className="flex-1">{s.label}</span>
                 {s.href === "/admin/consultas" && newInquiryCount > 0 && <span className={cn("flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold", active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground")}>{newInquiryCount > 99 ? "99+" : newInquiryCount}</span>}
+                {s.href === "/admin/pedidos" && newOrderCount > 0 && <span className={cn("flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold", active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground")}>{newOrderCount > 99 ? "99+" : newOrderCount}</span>}
                 {s.subitems && (
                   <ChevronDownIcon
                     className={cn(

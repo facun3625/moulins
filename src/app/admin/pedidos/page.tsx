@@ -8,6 +8,7 @@ import { FULFILLMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-stat
 import type { OrderStatus } from "@/generated/prisma/client";
 import { OrdersFilterBar } from "./orders-filter-bar";
 import { OrdersTable } from "./orders-table";
+import { ProductionSummary, type ProductionGroup } from "./production-summary";
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" });
 const PAGE_SIZE = 25;
@@ -15,7 +16,7 @@ const PAGE_SIZE = 25;
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; fecha?: string; estado?: string; tipo?: string; pago?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; fecha?: string; estado?: string; tipo?: string; pago?: string; page?: string; vista?: string }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
@@ -42,7 +43,8 @@ export default async function AdminOrdersPage({
       : {}),
   };
 
-  const [orders, total, deliveryDates] = await Promise.all([
+  const productionMode = params.vista === "produccion";
+  const [orders, total, deliveryDates, productionItems] = await Promise.all([
     prisma.order.findMany({
       where,
       include: { user: true, deliveryDate: true, paymentProof: true },
@@ -56,7 +58,40 @@ export default async function AdminOrdersPage({
       select: { id: true, date: true },
       take: 100,
     }),
+    productionMode ? prisma.orderItem.findMany({
+      where: { order: {
+        status: { in: ["CONFIRMED", "PREPARING", "READY"] },
+        ...(params.fecha ? { deliveryDateId: params.fecha } : {}),
+        ...(params.tipo ? { fulfillmentType: params.tipo as "DELIVERY" | "PICKUP" } : {}),
+      } },
+      include: { order: { include: { deliveryDate: true } }, productVariant: { include: { product: true } } },
+    }) : Promise.resolve([]),
   ]);
+
+  const productionMap = new Map<string, ProductionGroup>();
+  for (const item of productionItems) {
+    let group = productionMap.get(item.order.deliveryDateId);
+    if (!group) { group = { deliveryDateId: item.order.deliveryDateId, deliveryLabel: dateFormatter.format(item.order.deliveryDate.date), deliverySortKey: item.order.deliveryDate.date.toISOString(), orderCount: 0, items: [] }; productionMap.set(item.order.deliveryDateId, group); }
+    const existing = group.items.find(entry => entry.variantId === item.productVariantId);
+    if (existing) existing.quantity += item.quantity;
+    else group.items.push({ variantId: item.productVariantId, productName: item.productVariant.product.name, variantLabel: [item.productVariant.gusto, item.productVariant.tamano].filter(Boolean).join(" · ") || null, quantity: item.quantity });
+  }
+  for (const group of productionMap.values()) {
+    group.orderCount = new Set(productionItems.filter(item => item.order.deliveryDateId === group!.deliveryDateId).map(item => item.orderId)).size;
+    group.items.sort((a,b) => a.productName.localeCompare(b.productName, "es") || (a.variantLabel ?? "").localeCompare(b.variantLabel ?? "", "es"));
+  }
+  const productionGroups = [...productionMap.values()].sort((a,b) => a.deliverySortKey.localeCompare(b.deliverySortKey));
+
+  function viewHref(production: boolean) {
+    const search = new URLSearchParams();
+    if (production) search.set("vista", "produccion");
+    if (params.fecha) search.set("fecha", params.fecha);
+    if (params.tipo) search.set("tipo", params.tipo);
+    if (!production && params.estado) search.set("estado", params.estado);
+    if (!production && params.pago) search.set("pago", params.pago);
+    if (!production && params.q) search.set("q", params.q);
+    return `/admin/pedidos${search.size ? `?${search}` : ""}`;
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -73,13 +108,14 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Pedidos</h1>
+      <div className="flex items-center justify-between gap-3"><h1 className="text-xl font-semibold">Pedidos</h1><div className="flex rounded-lg border bg-muted/30 p-1 print:hidden"><Button render={<Link href={viewHref(false)} />} variant={!productionMode ? "default" : "ghost"} size="sm">Por cliente</Button><Button render={<Link href={viewHref(true)} />} variant={productionMode ? "default" : "ghost"} size="sm">Por producto</Button></div></div>
 
       <OrdersFilterBar
         deliveryDates={deliveryDates.map((d) => ({ id: d.id, date: d.date.toISOString() }))}
+        productionMode={productionMode}
       />
 
-      <p className="text-sm text-muted-foreground">
+      {!productionMode && <><p className="text-sm text-muted-foreground">
         {total} {total === 1 ? "pedido encontrado" : "pedidos encontrados"}
       </p>
 
@@ -127,6 +163,8 @@ export default async function AdminOrdersPage({
           </Button>
         </div>
       )}
+      </>}
+      {productionMode && <ProductionSummary groups={productionGroups} />}
     </div>
   );
 }
