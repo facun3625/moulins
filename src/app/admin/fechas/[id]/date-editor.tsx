@@ -23,6 +23,7 @@ import { useConfirm } from "@/components/admin/confirm-provider";
 import { usePrompt } from "@/components/admin/prompt-provider";
 import { cn } from "@/lib/utils";
 import { deleteDeliveryDate, saveDeliveryDate } from "../actions";
+import { CostsTab, type CostRow } from "./costs-tab";
 
 type StockMode = "BY_GROUP" | "BY_PRODUCT" | "UNLIMITED";
 
@@ -93,9 +94,11 @@ export function DateEditor({
   dateSlots,
   defaultSlots,
   movements,
+  costs,
 }: {
   deliveryDate: DeliveryDateData;
   stockMode: StockMode;
+  costs: CostRow[];
   groups: Group[];
   flatProducts: FlatProduct[];
   allProducts: Product[];
@@ -421,6 +424,7 @@ export function DateEditor({
     { value: "datos", label: "Datos" },
     { value: "stock", label: "Stock" },
     ...(pickupEnabled ? [{ value: "franjas", label: "Franjas" }] : []),
+    { value: "costos", label: "Costos" },
     { value: "historial", label: "Historial" },
   ];
 
@@ -678,6 +682,10 @@ export function DateEditor({
             )}
           </TabsContent>
         )}
+
+        <TabsContent value="costos">
+          <CostsTab deliveryDateId={deliveryDate.id} costs={costs} />
+        </TabsContent>
 
         <TabsContent value="historial" className="flex flex-col gap-2 rounded-lg border p-4">
           <div className="flex flex-col gap-0.5">

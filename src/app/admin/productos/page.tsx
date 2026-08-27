@@ -14,7 +14,7 @@ import { ProductsFilterBar } from "./products-filter-bar";
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; panel?: string }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
@@ -49,6 +49,8 @@ export default async function ProductsPage({
         <h1 className="text-xl font-semibold">Productos</h1>
         <div className="flex gap-2">
           <StockGroupManager
+            key={`stock-${params.panel ?? "none"}`}
+            defaultOpen={params.panel === "grupos"}
             groups={stockGroups.map((g) => ({
               id: g.id,
               name: g.name,
@@ -56,7 +58,11 @@ export default async function ProductsPage({
               productCount: g._count.products,
             }))}
           />
-          <CategoryManager categories={categories} />
+          <CategoryManager
+            key={`cat-${params.panel ?? "none"}`}
+            defaultOpen={params.panel === "categorias"}
+            categories={categories}
+          />
           <Button render={<Link href="/admin/productos/nuevo" />} size="sm">
             Nuevo
           </Button>

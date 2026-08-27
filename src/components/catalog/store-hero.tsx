@@ -91,7 +91,7 @@ export function StoreHero() {
         <div className="flex items-center gap-3">
           {hasSocial && (
             <div className="flex items-center gap-2.5 border-r border-white/25 pr-3">
-              <span className="text-xs font-semibold text-white">Nuestros canales de contacto</span>
+              <span className="text-xs font-semibold text-white">Contacto</span>
               {whatsapp && (
                 <a
                   href={toWhatsAppLink(whatsapp)}

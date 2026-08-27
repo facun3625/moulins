@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/require-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
-import { FULFILLMENT_TYPE_LABELS, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
+import { FULFILLMENT_TYPE_LABELS, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
 import { OrderReviewActions } from "./order-review-actions";
 import { OrderStatusActions } from "./order-status-actions";
 
@@ -54,7 +54,7 @@ export default async function AdminOrderDetailPage({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {!order.user && <Badge variant="secondary">Invitado</Badge>}
-          <Badge variant={order.status === "CANCELLED" ? "secondary" : "default"}>
+          <Badge className={ORDER_STATUS_COLORS[order.status]}>
             {ORDER_STATUS_LABELS[order.status]}
           </Badge>
           <Button

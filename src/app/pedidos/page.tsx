@@ -9,7 +9,7 @@ import { StoreFooter } from "@/components/catalog/store-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/order-status";
 import { RepeatOrderButton } from "@/components/catalog/repeat-order-button";
 import { CustomerSidebar } from "@/components/customer-sidebar";
 
@@ -83,7 +83,7 @@ export default async function MisPedidosPage({
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-sm font-semibold">{formatPrice(Number(o.total))}</span>
-                        <Badge variant={o.status === "CANCELLED" ? "secondary" : "default"}>
+                        <Badge className={ORDER_STATUS_COLORS[o.status]}>
                           {ORDER_STATUS_LABELS[o.status]}
                         </Badge>
                       </div>

@@ -12,7 +12,7 @@ import { requireAdmin } from "@/lib/require-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/order-status";
 import {
   Table,
   TableBody,
@@ -120,7 +120,7 @@ export default async function AdminDashboard() {
                     </TableCell>
                     <TableCell>{dateFormatter.format(o.createdAt)}</TableCell>
                     <TableCell>
-                      <Badge variant={o.status === "CANCELLED" ? "secondary" : "default"}>
+                      <Badge className={ORDER_STATUS_COLORS[o.status]}>
                         {ORDER_STATUS_LABELS[o.status]}
                       </Badge>
                     </TableCell>

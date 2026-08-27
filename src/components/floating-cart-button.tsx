@@ -16,11 +16,11 @@ export function FloatingCartButton() {
       type="button"
       onClick={openCart}
       aria-label="Carrito"
-      className="fixed top-4 right-4 z-[99] flex size-12 items-center justify-center rounded-full bg-background text-foreground shadow-lg ring-1 ring-border transition-transform hover:scale-110 active:scale-95 lg:hidden"
+      className="fixed top-4 right-4 z-[99] flex size-10 items-center justify-center rounded-full bg-background text-foreground shadow-lg ring-1 ring-border transition-transform hover:scale-110 active:scale-95 lg:hidden"
     >
-      <ShoppingBagIcon className="size-5" />
+      <ShoppingBagIcon className="size-4.5" />
       {itemCount > 0 && (
-        <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[0.7rem] font-medium text-primary-foreground">
+        <span className="absolute -top-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-primary text-[0.65rem] font-medium text-primary-foreground">
           {itemCount}
         </span>
       )}

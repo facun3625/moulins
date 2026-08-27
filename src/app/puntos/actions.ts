@@ -25,10 +25,17 @@ export async function redeemCoupon(couponId: string) {
       }
     }
 
-    const alreadyPending = await tx.couponRedemption.findFirst({
-      where: { couponId, userId, orderId: null },
+    // Solo se puede tener un cupón canjeado sin usar a la vez — no importa
+    // cuál, si ya hay uno pendiente hay que usarlo antes de canjear otro.
+    const anyPending = await tx.couponRedemption.findFirst({
+      where: { userId, orderId: null },
+      include: { coupon: true },
     });
-    if (alreadyPending) throw new Error("Ya canjeaste este cupón — usalo en tu próximo pedido");
+    if (anyPending) {
+      throw new Error(
+        `Ya tenés el cupón ${anyPending.coupon.code} canjeado sin usar — usalo en un pedido antes de canjear otro`,
+      );
+    }
 
     const balanceResult = await tx.pointsLedger.aggregate({
       where: { userId },

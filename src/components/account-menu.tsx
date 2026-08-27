@@ -39,7 +39,7 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
         variant="outline"
         size="icon"
         aria-label="Ingresar"
-        className={cn(overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25")}
+        className={cn(overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25 hover:text-white")}
         onClick={openLogin}
       >
         <UserIcon />
@@ -57,7 +57,7 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
             aria-label={`Cuenta de ${session.user.name ?? session.user.email}`}
             className={cn(
               "rounded-full p-0",
-              overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25",
+              overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25 hover:text-white",
             )}
           />
         }
@@ -91,7 +91,7 @@ export function AccountMenu({ overlay = false }: { overlay?: boolean }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="gap-2 py-1.5 text-sm text-muted-foreground"
-          onClick={() => signOut()}
+          onClick={() => signOut({ callbackUrl: "/" })}
         >
           <span className="size-1 shrink-0 rounded-full bg-current" />
           Salir

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
-import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon } from "lucide-react";
+import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, PackageXIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +23,7 @@ import {
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { useAdminTheme } from "@/components/admin/admin-theme-root";
 import { setStoreOpen } from "@/app/admin/actions";
+import type { StockAlert } from "@/lib/stock-alerts";
 
 function initials(name?: string | null) {
   if (!name) return "?";
@@ -34,7 +35,7 @@ function initials(name?: string | null) {
     .join("");
 }
 
-export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
+export function AdminTopbar({ storeOpen, stockAlerts }: { storeOpen: boolean; stockAlerts: StockAlert[] }) {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { containerRef, theme, toggleTheme } = useAdminTheme();
@@ -78,6 +79,40 @@ export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
       </Button>
 
       <div className="hidden lg:block" />
+
+      <div className="flex items-center gap-2">
+        {stockAlerts.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button className="flex h-9 items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20" />
+              }
+            >
+              <PackageXIcon className="size-3.5" />
+              <span className="hidden sm:inline">Sin stock</span>
+              <span className="flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-destructive-foreground">
+                {stockAlerts.reduce((n, a) => n + a.outOfStockNames.length, 0)}
+              </span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-72 p-1.5" container={containerRef}>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                  Agotado en fechas abiertas
+                </DropdownMenuLabel>
+                {stockAlerts.map((alert) => (
+                  <DropdownMenuItem
+                    key={alert.deliveryDateId}
+                    className="flex flex-col items-start gap-0.5 py-2"
+                    render={<Link href={`/admin/fechas/${alert.deliveryDateId}`} />}
+                  >
+                    <span className="text-sm font-medium">{alert.deliveryDateLabel}</span>
+                    <span className="text-xs text-muted-foreground">{alert.outOfStockNames.join(", ")}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
       {/* ── Controles unificados en un único pill ── */}
       <div className="flex items-center divide-x divide-border overflow-hidden rounded-full border bg-background shadow-sm">
@@ -139,7 +174,7 @@ export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="gap-2 py-1.5 text-sm text-muted-foreground"
-              onClick={() => signOut()}
+              onClick={() => signOut({ callbackUrl: "/" })}
             >
               <span className="size-1 shrink-0 rounded-full bg-current" />
               Salir
@@ -147,6 +182,7 @@ export function AdminTopbar({ storeOpen }: { storeOpen: boolean }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
+      </div>
       </div>
     </header>
   );

@@ -52,6 +52,7 @@ model User {
   orders           Order[]
   pointsLedger     PointsLedger[]
   couponRedemption CouponRedemption[]
+  whatsappLogs     WhatsappLog[]
 }
 
 model Account {
@@ -209,6 +210,22 @@ model DeliveryDate {
   orders          Order[]
   pickupSlots     PickupSlot[]
   stockMovements  StockMovement[]
+  costs           DeliveryDateCost[]
+}
+
+// Costos sueltos cargados a mano para una fecha puntual (ej: ingredientes,
+// delivery, alquiler del local ese día) — opcional, se van agregando de a
+// uno. Sirve para sacar el resultado neto (ventas - costos) en Estadísticas.
+model DeliveryDateCost {
+  id             String   @id @default(cuid())
+  deliveryDateId String
+  label          String
+  amount         Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+
+  deliveryDate DeliveryDate @relation(fields: [deliveryDateId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryDateId])
 }
 
 // Modo "horario semanal": un día de la semana habilitado, con 1 o 2 franjas
@@ -476,6 +493,38 @@ model CouponRedemption {
 model Settings {
   key   String @id
   value String
+}
+
+// Historial de cada mail que la app intentó mandar (confirmación de
+// pedido, recuperación de contraseña, pruebas desde el admin) — para poder
+// ver desde el panel si efectivamente salieron, sin depender del proveedor
+// SMTP externo.
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  type      String
+  success   Boolean
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Queda registrado cada vez que un admin le manda un WhatsApp a un cliente
+// desde una campaña — no hay forma de confirmar que WhatsApp lo entregó (el
+// envío pasa por WhatsApp Web, fuera de la app), esto solo marca que el
+// admin abrió el link con el mensaje.
+model WhatsappLog {
+  id        String   @id @default(cuid())
+  userId    String
+  phone     String
+  message   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // ---------- Sobre nosotros ----------

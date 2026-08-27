@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -147,6 +147,10 @@ export function CheckoutForm({
   const [proofFileName, setProofFileName] = useState<string | null>(null);
 
   const [pending, startTransition] = useTransition();
+  // El carrito se vacía apenas el pedido se confirma, pero la navegación a
+  // la página de éxito tarda un instante — sin esto, en ese instante se ve
+  // "tu carrito está vacío" en vez de un estado de carga.
+  const [orderPlaced, setOrderPlaced] = useState(false);
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(
@@ -168,6 +172,14 @@ export function CheckoutForm({
   }, [fulfillmentType, cart.deliveryDateId]);
 
   if (itemCount === 0) {
+    if (orderPlaced) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+          <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Confirmando tu pedido...</p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
         <h1 className="text-xl font-semibold">Tu carrito está vacío</h1>
@@ -273,6 +285,7 @@ export function CheckoutForm({
     startTransition(async () => {
       try {
         const { orderId } = await placeOrder(formData);
+        setOrderPlaced(true);
         clearCart();
         router.push(`/pedidos/${orderId}?success=1`);
       } catch (e) {

@@ -18,7 +18,7 @@ export function CartBar({ className }: { className?: string }) {
         type="button"
         onClick={openCart}
         size="lg"
-        className="flex w-full items-center justify-between px-4"
+        className="flex w-full items-center justify-between pl-4 pr-20 sm:pr-24"
       >
         <span className="flex items-center gap-2">
           <ShoppingBagIcon className="size-4" />

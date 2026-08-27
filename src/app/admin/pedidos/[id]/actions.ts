@@ -8,13 +8,12 @@ import type { OrderStatus } from "@/generated/prisma/client";
 import { logGroupStockMovement, logProductStockMovement } from "@/lib/stock-movements";
 import { awardPointsForOrder, reversePointsForOrder } from "@/lib/points";
 
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  CONFIRMED: "PREPARING",
-  PREPARING: "READY",
-  READY: "DELIVERED",
-};
+// Los tres estados "activos" del pedido se pueden reasignar libremente
+// entre sí en cualquier sentido (incluso desde Entregado hacia atrás, por
+// si el admin se equivocó) — no es un avance de un solo paso como antes.
+const ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "PREPARING", "DELIVERED"];
 
-const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING", "READY"];
+const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING"];
 
 async function restoreStockForOrder(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], orderId: string) {
   const items = await tx.orderItem.findMany({
@@ -67,9 +66,9 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Pedido no encontrado");
 
-  const isForward = NEXT_STATUS[order.status] === status;
+  const isActiveSwitch = ACTIVE_STATUSES.includes(order.status) && ACTIVE_STATUSES.includes(status);
   const isCancel = status === "CANCELLED" && CANCELLABLE_FROM.includes(order.status);
-  if (!isForward && !isCancel) throw new Error("Ese cambio de estado no es válido");
+  if (!isActiveSwitch && !isCancel) throw new Error("Ese cambio de estado no es válido");
 
   await prisma.$transaction(async (tx) => {
     if (isCancel) {

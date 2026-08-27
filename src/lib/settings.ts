@@ -81,3 +81,34 @@ export const getSmtpSettings = cache(async (): Promise<SmtpSettings> => {
     secure: map.smtp_secure === "true",
   };
 });
+
+// ---------- Mensaje editable del mail de pedido ----------
+
+export const getOrderEmailMessage = cache(async (): Promise<string | null> => {
+  const row = await prisma.settings.findUnique({ where: { key: "order_email_message" } });
+  return row?.value || null;
+});
+
+// ---------- Telegram (aviso de pedido nuevo al grupo del equipo) ----------
+
+export type TelegramSettings = {
+  configured: boolean;
+  botToken: string | null;
+  chatId: string | null;
+};
+
+const TELEGRAM_SETTINGS_KEYS = ["telegram_bot_token", "telegram_chat_id"] as const;
+
+export const getTelegramSettings = cache(async (): Promise<TelegramSettings> => {
+  const rows = await prisma.settings.findMany({
+    where: { key: { in: [...TELEGRAM_SETTINGS_KEYS] } },
+  });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const botToken = map.telegram_bot_token || null;
+  const chatId = map.telegram_chat_id || null;
+  return {
+    configured: Boolean(botToken && chatId),
+    botToken,
+    chatId,
+  };
+});

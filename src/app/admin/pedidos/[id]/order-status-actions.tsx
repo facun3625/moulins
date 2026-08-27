@@ -6,19 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { OrderStatus } from "@/generated/prisma/client";
 import { useConfirm } from "@/components/admin/confirm-provider";
+import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { updateOrderStatus } from "./actions";
 
-const NEXT_STATUS_LABEL: Partial<Record<OrderStatus, string>> = {
-  CONFIRMED: "Marcar en preparación",
-  PREPARING: "Marcar listo",
-  READY: "Marcar entregado",
-};
-
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  CONFIRMED: "PREPARING",
-  PREPARING: "READY",
-  READY: "DELIVERED",
-};
+// Los tres estados activos se pueden reasignar libremente entre sí, en
+// cualquier sentido (incluso desde Entregado hacia atrás si el admin se
+// equivocó) — no es un avance de un solo paso.
+const ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "PREPARING", "DELIVERED"];
+const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING"];
 
 export function OrderStatusActions({
   orderId,
@@ -29,53 +24,49 @@ export function OrderStatusActions({
 }) {
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
-  const nextStatus = NEXT_STATUS[status];
-  const nextLabel = NEXT_STATUS_LABEL[status];
 
-  if (!nextStatus) return null;
+  if (!ACTIVE_STATUSES.includes(status)) return null;
+
+  const otherActiveStatuses = ACTIVE_STATUSES.filter((s) => s !== status);
+  const cancellable = CANCELLABLE_FROM.includes(status);
+
+  function setStatus(next: OrderStatus) {
+    startTransition(async () => {
+      try {
+        await updateOrderStatus(orderId, next);
+        toast.success("Estado actualizado");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Error");
+      }
+    });
+  }
 
   return (
-    <div className="flex gap-2">
-      <Button
-        type="button"
-        disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            try {
-              await updateOrderStatus(orderId, nextStatus);
-              toast.success("Estado actualizado");
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Error");
-            }
-          })
-        }
-      >
-        {nextLabel}
-      </Button>
-      <Button
-        type="button"
-        variant="destructive"
-        disabled={pending}
-        onClick={async () => {
-          const ok = await confirm({
-            title: "Cancelar pedido",
-            description: "¿Cancelar este pedido?",
-            confirmLabel: "Cancelar pedido",
-            destructive: true,
-          });
-          if (!ok) return;
-          startTransition(async () => {
-            try {
-              await updateOrderStatus(orderId, "CANCELLED");
-              toast.success("Pedido cancelado");
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Error");
-            }
-          });
-        }}
-      >
-        Cancelar pedido
-      </Button>
+    <div className="flex flex-wrap gap-2">
+      {otherActiveStatuses.map((s) => (
+        <Button key={s} type="button" variant="outline" disabled={pending} onClick={() => setStatus(s)}>
+          Marcar {ORDER_STATUS_LABELS[s].toLowerCase()}
+        </Button>
+      ))}
+      {cancellable && (
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={pending}
+          onClick={async () => {
+            const ok = await confirm({
+              title: "Cancelar pedido",
+              description: "¿Cancelar este pedido?",
+              confirmLabel: "Cancelar pedido",
+              destructive: true,
+            });
+            if (!ok) return;
+            setStatus("CANCELLED");
+          }}
+        >
+          Cancelar pedido
+        </Button>
+      )}
     </div>
   );
 }

@@ -17,8 +17,8 @@ import { createStockGroup, deleteStockGroup, updateStockGroup } from "./actions"
 
 type StockGroup = { id: string; name: string; defaultStockQuantity: number | null; productCount: number };
 
-export function StockGroupManager({ groups }: { groups: StockGroup[] }) {
-  const [open, setOpen] = useState(false);
+export function StockGroupManager({ groups, defaultOpen }: { groups: StockGroup[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const { containerRef } = useAdminTheme();
 
   return (

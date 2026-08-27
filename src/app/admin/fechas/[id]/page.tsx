@@ -22,7 +22,7 @@ export default async function EditDeliveryDatePage({
   const { id } = await params;
   await requireAdmin();
 
-  const [deliveryDate, products, stockGroups, productStock, pickupEnabled, dateSlots, defaultSlots, movements] =
+  const [deliveryDate, products, stockGroups, productStock, pickupEnabled, dateSlots, defaultSlots, movements, costs] =
     await Promise.all([
       prisma.deliveryDate.findUnique({ where: { id } }),
       prisma.product.findMany({
@@ -48,6 +48,10 @@ export default async function EditDeliveryDatePage({
       prisma.stockMovement.findMany({
         where: { deliveryDateId: id },
         include: { stockGroup: { select: { name: true } }, product: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.deliveryDateCost.findMany({
+        where: { deliveryDateId: id },
         orderBy: { createdAt: "desc" },
       }),
     ]);
@@ -109,6 +113,12 @@ export default async function EditDeliveryDatePage({
         quantitySold: m.quantitySold,
         note: m.note,
         createdAt: m.createdAt.toISOString(),
+      }))}
+      costs={costs.map((c) => ({
+        id: c.id,
+        label: c.label,
+        amount: Number(c.amount),
+        createdAt: c.createdAt.toISOString(),
       }))}
     />
   );

@@ -103,21 +103,12 @@ export async function deleteStockGroup(id: string) {
   revalidatePath("/admin/productos");
 }
 
-// Todo producto pertenece a un grupo de stock. Si no se eligió uno
-// existente, se crea uno propio (nombre = el del producto, o el que se
-// haya escrito), desambiguando si ya existe uno con ese nombre.
-async function resolveStockGroupId(
-  tx: Pick<PrismaClient, "stockGroup">,
-  { stockGroupId, newStockGroupName, fallbackName }: { stockGroupId?: string | null; newStockGroupName?: string | null; fallbackName: string },
-) {
-  if (stockGroupId) {
-    const group = await tx.stockGroup.findUnique({ where: { id: stockGroupId } });
-    if (!group) throw new Error("Grupo de stock no encontrado");
-    return group.id;
-  }
-
-  const baseName = (newStockGroupName || fallbackName).trim() || fallbackName;
-  let name = baseName;
+// Usado solo al duplicar un producto: la copia nace con su propio grupo de
+// stock (nombre derivado del producto), desambiguando si ya existe uno con
+// ese nombre. La creación manual de productos exige elegir un grupo ya
+// existente (ver StockGroupPicker) — no pasa por acá.
+async function createStockGroupForCopy(tx: Pick<PrismaClient, "stockGroup">, fallbackName: string) {
+  let name = fallbackName;
   let attempt = 1;
   for (;;) {
     try {
@@ -125,7 +116,7 @@ async function resolveStockGroupId(
       return group.id;
     } catch {
       attempt += 1;
-      name = `${baseName} (${attempt})`;
+      name = `${fallbackName} (${attempt})`;
       if (attempt > 20) throw new Error("No se pudo crear el grupo de stock");
     }
   }
@@ -137,8 +128,7 @@ const newProductSchema = z.object({
   name: z.string().min(1, "Ingresá un nombre"),
   description: z.string().optional(),
   categoryId: z.string().min(1, "Elegí una categoría"),
-  stockGroupId: z.string().optional(),
-  newStockGroupName: z.string().optional(),
+  stockGroupId: z.string().min(1, "Elegí un grupo de stock"),
 });
 
 export async function createProduct(formData: FormData) {
@@ -147,22 +137,18 @@ export async function createProduct(formData: FormData) {
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     categoryId: formData.get("categoryId"),
-    stockGroupId: formData.get("stockGroupId") || undefined,
-    newStockGroupName: formData.get("newStockGroupName") || undefined,
+    stockGroupId: formData.get("stockGroupId"),
   });
 
-  const stockGroupId = await resolveStockGroupId(prisma, {
-    stockGroupId: parsed.stockGroupId,
-    newStockGroupName: parsed.newStockGroupName,
-    fallbackName: parsed.name,
-  });
+  const group = await prisma.stockGroup.findUnique({ where: { id: parsed.stockGroupId } });
+  if (!group) throw new Error("Grupo de stock no encontrado");
 
   const product = await prisma.product.create({
     data: {
       name: parsed.name,
       description: parsed.description,
       categoryId: parsed.categoryId,
-      stockGroupId,
+      stockGroupId: parsed.stockGroupId,
     },
   });
   revalidatePath("/admin/productos");
@@ -194,7 +180,7 @@ export async function duplicateProduct(id: string) {
 
   const copyName = `${source.name} (copia)`;
   // La copia nace con su propio grupo de stock, no comparte el pozo del original.
-  const stockGroupId = await resolveStockGroupId(prisma, { fallbackName: copyName });
+  const stockGroupId = await createStockGroupForCopy(prisma, copyName);
 
   const copy = await prisma.product.create({
     data: {
@@ -260,8 +246,7 @@ const saveProductSchema = z.object({
   name: z.string().min(1, "Ingresá un nombre"),
   description: z.string().optional(),
   categoryId: z.string().min(1, "Elegí una categoría"),
-  stockGroupId: z.string().optional(),
-  newStockGroupName: z.string().optional(),
+  stockGroupId: z.string().min(1, "Elegí un grupo de stock"),
   active: z.boolean(),
   featured: z.boolean(),
   contactToBuy: z.boolean(),
@@ -282,8 +267,7 @@ export async function saveProduct(id: string, formData: FormData) {
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     categoryId: formData.get("categoryId"),
-    stockGroupId: formData.get("stockGroupId") || undefined,
-    newStockGroupName: formData.get("newStockGroupName") || undefined,
+    stockGroupId: formData.get("stockGroupId"),
     active: formData.get("active") === "true",
     featured: formData.get("featured") === "true",
     contactToBuy: formData.get("contactToBuy") === "true",
@@ -294,11 +278,9 @@ export async function saveProduct(id: string, formData: FormData) {
     deletedImageIds: JSON.parse(String(formData.get("deletedImageIds") || "[]")),
   });
 
-  const stockGroupId = await resolveStockGroupId(prisma, {
-    stockGroupId: parsed.stockGroupId,
-    newStockGroupName: parsed.newStockGroupName,
-    fallbackName: parsed.name,
-  });
+  const group = await prisma.stockGroup.findUnique({ where: { id: parsed.stockGroupId } });
+  if (!group) throw new Error("Grupo de stock no encontrado");
+  const stockGroupId = parsed.stockGroupId;
 
   if (parsed.deletedVariantIds.length > 0) {
     const usedCount = await prisma.orderItem.count({

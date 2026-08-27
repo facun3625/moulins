@@ -38,8 +38,8 @@ export async function awardPointsForOrder(
   });
 }
 
-// Se llama al cancelar un pedido que ya había otorgado puntos (CONFIRMED,
-// PREPARING o READY) — resta lo que se había sumado.
+// Se llama al cancelar un pedido que ya había otorgado puntos (CONFIRMED
+// o PREPARING) — resta lo que se había sumado.
 export async function reversePointsForOrder(
   tx: Tx,
   order: { id: string; userId: string | null; pointsEarned: number },

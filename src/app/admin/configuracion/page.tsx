@@ -1,4 +1,4 @@
-import { getStoreSettings, getSmtpSettings } from "@/lib/settings";
+import { getStoreSettings, getSmtpSettings, getOrderEmailMessage, getTelegramSettings } from "@/lib/settings";
 import { getAboutContent } from "@/lib/about";
 import { getPopupConfig } from "@/lib/popup";
 import { requireAdmin } from "@/lib/require-admin";
@@ -7,15 +7,20 @@ import { StoreSettingsForm } from "./store-settings-form";
 import { AboutUsForm } from "./about-us-form";
 import { PopupForm } from "./popup-form";
 import { SmtpSettingsForm } from "./smtp-settings-form";
+import { EmailEditor } from "./email-editor";
+import { EmailLogTable } from "./email-log-table";
+import { TelegramSettingsForm } from "./telegram-settings-form";
 import { DocumentacionTab } from "./documentacion-tab";
 
 export default async function ConfiguracionPage() {
   await requireAdmin();
-  const [settings, aboutContent, popupConfig, smtpSettings] = await Promise.all([
+  const [settings, aboutContent, popupConfig, smtpSettings, orderEmailMessage, telegramSettings] = await Promise.all([
     getStoreSettings(),
     getAboutContent(),
     getPopupConfig(),
     getSmtpSettings(),
+    getOrderEmailMessage(),
+    getTelegramSettings(),
   ]);
 
   return (
@@ -33,8 +38,14 @@ export default async function ConfiguracionPage() {
           <TabsTrigger value="popup" className="flex-1">
             Pop-up
           </TabsTrigger>
+          <TabsTrigger value="smtp" className="flex-1">
+            SMTP
+          </TabsTrigger>
           <TabsTrigger value="mail" className="flex-1">
             Mail
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="flex-1">
+            Telegram
           </TabsTrigger>
           <TabsTrigger value="docs" className="flex-1">
             Documentación
@@ -53,8 +64,34 @@ export default async function ConfiguracionPage() {
           <PopupForm key={popupConfig.version} config={popupConfig} />
         </TabsContent>
 
-        <TabsContent value="mail">
+        <TabsContent value="smtp">
           <SmtpSettingsForm key={JSON.stringify(smtpSettings)} settings={smtpSettings} />
+        </TabsContent>
+
+        <TabsContent value="mail">
+          <Tabs defaultValue="editor">
+            <TabsList>
+              <TabsTrigger value="editor">Editor</TabsTrigger>
+              <TabsTrigger value="enviados">Enviados</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="editor">
+              <EmailEditor
+                key={orderEmailMessage ?? "default"}
+                message={orderEmailMessage}
+                smtpConfigured={smtpSettings.configured}
+                storeSettings={settings}
+              />
+            </TabsContent>
+
+            <TabsContent value="enviados">
+              <EmailLogTable />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="telegram">
+          <TelegramSettingsForm key={JSON.stringify(telegramSettings)} settings={telegramSettings} />
         </TabsContent>
 
         <TabsContent value="docs">

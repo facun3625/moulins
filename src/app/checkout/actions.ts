@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { headers } from "next/headers";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,9 +10,14 @@ import { saveUploadedFile } from "@/lib/storage";
 import { isWeeklyWindowStillOpen } from "@/lib/availability";
 import { logGroupStockMovement, logProductStockMovement } from "@/lib/stock-movements";
 import { awardPointsForOrder } from "@/lib/points";
-import { getStoreSettings } from "@/lib/settings";
+import { getStoreSettings, getOrderEmailMessage } from "@/lib/settings";
+import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
 import { sendMail } from "@/lib/mailer";
 import { orderConfirmationEmail } from "@/lib/email-templates";
+import { notifyNewOrder } from "@/lib/telegram";
+import { FULFILLMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/order-status";
+
+const orderDateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "long" });
 
 const itemSchema = z.object({
   productVariantId: z.string(),
@@ -410,32 +416,89 @@ export async function placeOrder(formData: FormData) {
   });
 
   const recipient = session?.user?.email ?? parsed.guestEmail;
-  if (recipient) {
-    try {
-      const [storeSettings, orderItems] = await Promise.all([
-        getStoreSettings(),
-        prisma.orderItem.findMany({
-          where: { orderId: order.id },
-          include: { productVariant: { include: { product: true } } },
-        }),
-      ]);
-      await sendMail({
-        to: recipient,
-        subject: `Recibimos tu pedido — ${storeSettings.storeName}`,
-        html: orderConfirmationEmail({
-          storeName: storeSettings.storeName,
-          orderId: order.id,
-          total: Number(order.total),
-          fulfillmentType: order.fulfillmentType,
-          items: orderItems.map((i) => ({
-            name: i.productVariant.product.name,
-            quantity: i.quantity,
-          })),
-        }),
-      });
-    } catch (e) {
-      console.error("No se pudo enviar el mail de confirmación", e);
+  try {
+    const [storeSettings, orderEmailMessage, fullOrder, hdrs] = await Promise.all([
+      getStoreSettings(),
+      getOrderEmailMessage(),
+      prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          deliveryDate: true,
+          pickupSlot: true,
+          coupon: true,
+          items: { include: { productVariant: { include: { product: true } } } },
+        },
+      }),
+      headers(),
+    ]);
+    if (fullOrder) {
+      const host = hdrs.get("host");
+      const protocol = host?.startsWith("localhost") || host?.startsWith("127.0.0.1") ? "http" : "https";
+      const appUrl = `${protocol}://${host}`;
+      const orderUrl = `${appUrl}/pedidos/${fullOrder.id}`;
+      const customerName = session?.user?.name ?? parsed.guestName ?? "Cliente";
+
+      if (recipient) {
+        try {
+          await sendMail({
+            to: recipient,
+            subject: `Recibimos tu pedido — ${storeSettings.storeName}`,
+            html: orderConfirmationEmail({
+              storeName: storeSettings.storeName,
+              logoUrl: storeSettings.logoUrl,
+              customMessage: orderEmailMessage,
+              customerName,
+              orderId: fullOrder.id,
+              orderUrl,
+              items: fullOrder.items.map((i) => ({
+                name: i.productVariant.product.name,
+                quantity: i.quantity,
+                unitPrice: Number(i.unitPrice),
+              })),
+              subtotal: Number(fullOrder.subtotal),
+              deliveryFee: Number(fullOrder.deliveryFee),
+              discount: Number(fullOrder.discountFromCoupon),
+              couponCode: fullOrder.coupon?.code ?? null,
+              total: Number(fullOrder.total),
+              pointsEarned: fullOrder.pointsEarned,
+              fulfillmentLabel: FULFILLMENT_TYPE_LABELS[fullOrder.fulfillmentType],
+              deliveryDateLabel: orderDateFormatter.format(fullOrder.deliveryDate.date),
+              deliveryAddress: fullOrder.deliveryAddress,
+              pickupSlotLabel: fullOrder.pickupSlot?.label ?? null,
+              phone: fullOrder.deliveryPhone,
+              paymentMethodLabel: PAYMENT_METHOD_LABELS[fullOrder.paymentMethod],
+              storeAddress: storeSettings.address,
+              storePhone: storeSettings.phone,
+              storeEmail: storeSettings.email,
+              whatsappUrl: storeSettings.whatsapp ? toWhatsAppLink(storeSettings.whatsapp) : null,
+              instagramUrl: storeSettings.instagram ? toInstagramLink(storeSettings.instagram) : null,
+              appUrl,
+            }),
+            type: "ORDER_CONFIRMATION",
+          });
+        } catch (e) {
+          console.error("No se pudo enviar el mail de confirmación", e);
+        }
+      }
+
+      // Fire-and-forget: no bloquea la respuesta al cliente ni depende de
+      // que haya mail configurado — es un aviso aparte para el equipo.
+      notifyNewOrder({
+        orderId: fullOrder.id,
+        orderUrl: `${appUrl}/admin/pedidos/${fullOrder.id}`,
+        customerName,
+        customerPhone: fullOrder.deliveryPhone,
+        paymentMethod: fullOrder.paymentMethod,
+        fulfillmentType: fullOrder.fulfillmentType,
+        total: Number(fullOrder.total),
+        items: fullOrder.items.map((i) => ({
+          name: i.productVariant.product.name,
+          quantity: i.quantity,
+        })),
+      }).catch((e) => console.error("notifyNewOrder falló", e));
     }
+  } catch (e) {
+    console.error("No se pudieron mandar los avisos de pedido", e);
   }
 
   return { orderId: order.id };

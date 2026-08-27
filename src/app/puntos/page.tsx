@@ -38,10 +38,10 @@ export default async function PuntosPage() {
     }),
   ]);
 
-  const pendingCouponIds = new Set(pendingRedemptions.map((r) => r.couponId));
-  const redeemable = coupons.filter(
-    (c) => !pendingCouponIds.has(c.id) && (!c.usageLimit || c._count.redemptions < c.usageLimit),
-  );
+  // Solo se puede tener un cupón canjeado sin usar a la vez — mientras haya
+  // uno pendiente, no se puede canjear otro (ni el mismo, ni cualquier otro).
+  const hasPendingRedemption = pendingRedemptions.length > 0;
+  const redeemable = coupons.filter((c) => !c.usageLimit || c._count.redemptions < c.usageLimit);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -82,6 +82,12 @@ export default async function PuntosPage() {
 
             <div className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold text-muted-foreground">Canjear por cupones</h2>
+              {hasPendingRedemption && (
+                <p className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                  Ya tenés el cupón <span className="font-medium text-foreground">{pendingRedemptions[0].coupon.code}</span> canjeado
+                  sin usar — usalo en un pedido antes de canjear otro.
+                </p>
+              )}
               {redeemable.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed p-6 text-center">
                   <TicketIcon className="size-5 text-muted-foreground" />
@@ -100,7 +106,10 @@ export default async function PuntosPage() {
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <span className="text-sm font-semibold">{c.pointsCost} pts</span>
-                        <RedeemCouponButton couponId={c.id} disabled={balance < c.pointsCost} />
+                        <RedeemCouponButton
+                          couponId={c.id}
+                          disabled={hasPendingRedemption || balance < c.pointsCost}
+                        />
                       </div>
                     </div>
                   ))}

@@ -21,8 +21,8 @@ import { useAdminTheme } from "@/components/admin/admin-theme-root";
 
 type Category = { id: string; name: string; icon: string | null; active: boolean };
 
-export function CategoryManager({ categories }: { categories: Category[] }) {
-  const [open, setOpen] = useState(false);
+export function CategoryManager({ categories, defaultOpen }: { categories: Category[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const { containerRef } = useAdminTheme();
 
   return (

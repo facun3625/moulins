@@ -7,30 +7,32 @@ import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/components/admin/confirm-provider";
 import { cn } from "@/lib/utils";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/order-status";
 import type { OrderStatus } from "@/generated/prisma/client";
 import { approveOrder, rejectOrder, updateOrderStatus } from "./[id]/actions";
 
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  CONFIRMED: "PREPARING",
-  PREPARING: "READY",
-  READY: "DELIVERED",
-};
+// Los tres estados "activos" se pueden reasignar libremente entre sí, en
+// cualquier sentido (incluso desde Entregado hacia atrás).
+const ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "PREPARING", "DELIVERED"];
 
-const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING", "READY"];
+const CANCELLABLE_FROM: OrderStatus[] = ["CONFIRMED", "PREPARING"];
 
-const triggerClass = cn(
-  badgeVariants({ variant: "default" }),
-  "h-5 !rounded-full cursor-pointer gap-1 border-transparent px-2 py-0 pr-1.5 text-xs font-medium select-none data-[size=sm]:h-5 [&_svg]:size-2.5 [&_svg]:!text-primary-foreground [&_svg]:opacity-90",
-);
+function triggerClass(status: OrderStatus) {
+  return cn(
+    badgeVariants({ variant: "secondary" }),
+    "h-5 !rounded-full cursor-pointer gap-1 border-transparent px-2 py-0 pr-1.5 text-xs font-medium select-none data-[size=sm]:h-5 [&_svg]:size-2.5 [&_svg]:opacity-70",
+    ORDER_STATUS_COLORS[status],
+  );
+}
 
 const contentClass = "min-w-32 p-1";
 const itemClass = "rounded-md py-1.5 pr-6 pl-2 text-xs";
 
 // Cambiar el estado sin salir de la lista — se ve como el badge de siempre,
 // pero es un select. Los pedidos "en revisión" (transferencia) usan
-// aprobar/rechazar en vez del flujo normal; los estados finales
-// (entregado/cancelado) no tienen a dónde avanzar, quedan como badge fijo.
+// aprobar/rechazar en vez del flujo normal. Cancelado es terminal (no se
+// puede reabrir); los tres activos (confirmado/preparación/entregado) se
+// pueden reasignar libremente entre sí, en cualquier sentido.
 export function OrderStatusSelect({
   orderId,
   status,
@@ -82,7 +84,7 @@ export function OrderStatusSelect({
           else if (value === "REJECT") runReject();
         }}
       >
-        <SelectTrigger size="sm" className={triggerClass}>
+        <SelectTrigger size="sm" className={triggerClass("PAYMENT_REVIEW")}>
           <SelectValue>{ORDER_STATUS_LABELS.PAYMENT_REVIEW}</SelectValue>
         </SelectTrigger>
         <SelectContent className={contentClass}>
@@ -97,11 +99,11 @@ export function OrderStatusSelect({
     );
   }
 
-  const next = NEXT_STATUS[status];
+  const otherActiveStatuses = ACTIVE_STATUSES.filter((s) => s !== status);
   const cancellable = CANCELLABLE_FROM.includes(status);
 
-  if (!next && !cancellable) {
-    return <Badge variant={status === "CANCELLED" ? "secondary" : "default"}>{ORDER_STATUS_LABELS[status]}</Badge>;
+  if (!ACTIVE_STATUSES.includes(status) && !cancellable) {
+    return <Badge className={ORDER_STATUS_COLORS[status]}>{ORDER_STATUS_LABELS[status]}</Badge>;
   }
 
   function handleChange(value: string | null) {
@@ -137,15 +139,15 @@ export function OrderStatusSelect({
 
   return (
     <Select value="_" disabled={pending} onValueChange={handleChange}>
-      <SelectTrigger size="sm" className={triggerClass}>
+      <SelectTrigger size="sm" className={triggerClass(status)}>
         <SelectValue>{ORDER_STATUS_LABELS[status]}</SelectValue>
       </SelectTrigger>
       <SelectContent className={contentClass}>
-        {next && (
-          <SelectItem value={next} className={itemClass}>
-            {ORDER_STATUS_LABELS[next]}
+        {otherActiveStatuses.map((s) => (
+          <SelectItem key={s} value={s} className={itemClass}>
+            {ORDER_STATUS_LABELS[s]}
           </SelectItem>
-        )}
+        ))}
         {cancellable && (
           <SelectItem value="CANCELLED" className={cn(itemClass, "text-destructive")}>
             Cancelar pedido

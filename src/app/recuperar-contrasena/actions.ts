@@ -28,6 +28,7 @@ export async function requestPasswordReset(rawEmail: string) {
       to: email,
       subject: `Restablecer tu contraseña — ${storeSettings.storeName}`,
       html: passwordResetEmail({ storeName: storeSettings.storeName, resetUrl }),
+      type: "PASSWORD_RESET",
     });
   } catch (e) {
     console.error("No se pudo enviar el mail de recuperación de contraseña", e);

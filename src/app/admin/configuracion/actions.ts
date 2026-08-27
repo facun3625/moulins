@@ -1,12 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { saveUploadedFile } from "@/lib/storage";
 import { sendMail } from "@/lib/mailer";
+import { getStoreSettings, getOrderEmailMessage, getTelegramSettings } from "@/lib/settings";
+import { orderConfirmationEmail, SAMPLE_ORDER_EMAIL_DATA } from "@/lib/email-templates";
+import { toWhatsAppLink, toInstagramLink } from "@/lib/social-links";
+import { sendTelegram } from "@/lib/telegram";
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Ingresá el nombre del negocio"),
@@ -214,5 +219,94 @@ export async function sendTestSmtpEmail() {
     to,
     subject: "Mail de prueba",
     html: "<p>Si estás leyendo esto, el SMTP de la tienda está bien configurado.</p>",
+    type: "TEST_SMTP",
   });
+}
+
+// ---------- Mensaje editable del mail de pedido ----------
+
+export async function updateOrderEmailMessage(formData: FormData) {
+  await requireAdmin();
+  await saveTextSetting(String(formData.get("message") ?? ""), "order_email_message");
+  revalidatePath("/admin/configuracion");
+}
+
+// `draftMessage` opcional: permite probar el texto que se está escribiendo
+// en el editor antes de guardarlo. Sin eso, usa el mensaje ya guardado.
+export async function sendTestOrderEmail(draftMessage?: string) {
+  const { session } = await requireAdmin();
+  const to = session.user.email;
+  if (!to) throw new Error("Tu usuario admin no tiene email");
+
+  const [storeSettings, savedMessage, hdrs] = await Promise.all([getStoreSettings(), getOrderEmailMessage(), headers()]);
+  const message = draftMessage !== undefined ? draftMessage : savedMessage;
+  const host = hdrs.get("host");
+  const protocol = host?.startsWith("localhost") || host?.startsWith("127.0.0.1") ? "http" : "https";
+  const appUrl = `${protocol}://${host}`;
+
+  await sendMail({
+    to,
+    subject: `Recibimos tu pedido — ${storeSettings.storeName}`,
+    html: orderConfirmationEmail({
+      ...SAMPLE_ORDER_EMAIL_DATA,
+      storeName: storeSettings.storeName,
+      logoUrl: storeSettings.logoUrl,
+      customMessage: message,
+      orderUrl: "#",
+      storeAddress: storeSettings.address,
+      storePhone: storeSettings.phone,
+      storeEmail: storeSettings.email,
+      whatsappUrl: storeSettings.whatsapp ? toWhatsAppLink(storeSettings.whatsapp) : null,
+      instagramUrl: storeSettings.instagram ? toInstagramLink(storeSettings.instagram) : null,
+      appUrl,
+    }),
+    type: "TEST_ORDER",
+  });
+}
+
+// ---------- Telegram (aviso de pedido nuevo al grupo del equipo) ----------
+
+const telegramSchema = z.object({
+  botToken: z.string().optional(),
+  chatId: z.string().min(1, "Ingresá el chat ID"),
+});
+
+export async function updateTelegramSettings(formData: FormData) {
+  await requireAdmin();
+
+  const parsed = telegramSchema.parse({
+    botToken: formData.get("botToken") || undefined,
+    chatId: formData.get("chatId"),
+  });
+
+  // El token es secreto: si el campo vino vacío es porque ya estaba
+  // cargado y no lo tocaron — no lo pisamos con "".
+  const existingToken = (await prisma.settings.findUnique({ where: { key: "telegram_bot_token" } }))?.value;
+  if (!parsed.botToken && !existingToken) {
+    throw new Error("Ingresá el token del bot");
+  }
+
+  await Promise.all([
+    saveTextSetting(parsed.chatId, "telegram_chat_id"),
+    parsed.botToken ? saveTextSetting(parsed.botToken, "telegram_bot_token") : Promise.resolve(),
+  ]);
+
+  revalidatePath("/admin/configuracion");
+}
+
+export async function removeTelegramSettings() {
+  await requireAdmin();
+  await prisma.settings.deleteMany({ where: { key: { in: ["telegram_bot_token", "telegram_chat_id"] } } });
+  revalidatePath("/admin/configuracion");
+}
+
+export async function sendTestTelegram(draftToken: string, draftChatId: string) {
+  await requireAdmin();
+  const saved = await getTelegramSettings();
+  const token = draftToken.trim() || saved.botToken || "";
+  const chatId = draftChatId.trim() || saved.chatId || "";
+  if (!token || !chatId) throw new Error("Faltan el token o el chat ID");
+
+  const result = await sendTelegram(token, chatId, "✅ <b>Prueba</b>\nSi ves este mensaje, los avisos de pedidos están funcionando.");
+  if (!result.ok) throw new Error(result.error ?? "No se pudo enviar");
 }

@@ -35,7 +35,7 @@ export function AdminThemeRoot({
     <AdminThemeContext.Provider value={{ theme, toggleTheme, containerRef }}>
       <div
         ref={containerRef}
-        className={cn("flex flex-1 h-[100dvh] overflow-hidden bg-background text-foreground", theme === "dark" && "dark")}
+        className={cn("flex h-[100dvh] overflow-hidden bg-background text-foreground", theme === "dark" && "dark")}
         style={
           {
             "--font-sans": fontFamily,

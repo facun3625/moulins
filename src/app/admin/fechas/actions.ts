@@ -343,3 +343,30 @@ export async function deleteStoreClosure(id: string) {
   await prisma.storeClosure.delete({ where: { id } });
   revalidatePath("/admin/fechas/cierres");
 }
+
+// ---------- Costos por fecha ----------
+
+const costSchema = z.object({
+  label: z.string().min(1, "Ingresá un nombre para el costo"),
+  amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
+});
+
+export async function addDeliveryDateCost(deliveryDateId: string, formData: FormData) {
+  await requireAdmin();
+  const parsed = costSchema.parse({
+    label: formData.get("label"),
+    amount: formData.get("amount"),
+  });
+  await prisma.deliveryDateCost.create({
+    data: { deliveryDateId, label: parsed.label, amount: parsed.amount },
+  });
+  revalidatePath(`/admin/fechas/${deliveryDateId}`);
+  revalidatePath("/admin/estadisticas");
+}
+
+export async function deleteDeliveryDateCost(id: string) {
+  await requireAdmin();
+  const cost = await prisma.deliveryDateCost.delete({ where: { id } });
+  revalidatePath(`/admin/fechas/${cost.deliveryDateId}`);
+  revalidatePath("/admin/estadisticas");
+}

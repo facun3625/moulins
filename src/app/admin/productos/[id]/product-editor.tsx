@@ -143,7 +143,6 @@ export function ProductEditor({
   const [categoryId, setCategoryId] = useState(product.categoryId);
   const [stockGroupSelection, setStockGroupSelection] = useState<StockGroupSelection>({
     stockGroupId: product.stockGroupId,
-    newStockGroupName: "",
   });
   const [active, setActive] = useState(product.active);
   const [featured, setFeatured] = useState(product.featured);
@@ -167,7 +166,6 @@ export function ProductEditor({
         description: product.description ?? "",
         categoryId: product.categoryId,
         stockGroupId: product.stockGroupId,
-        newStockGroupName: "",
         active: product.active,
         featured: product.featured,
         contactToBuy: product.contactToBuy,
@@ -183,7 +181,6 @@ export function ProductEditor({
     description,
     categoryId,
     stockGroupId: stockGroupSelection.stockGroupId,
-    newStockGroupName: stockGroupSelection.newStockGroupName,
     active,
     featured,
     contactToBuy,
@@ -241,7 +238,6 @@ export function ProductEditor({
         formData.set("description", description.trim());
         formData.set("categoryId", categoryId);
         formData.set("stockGroupId", stockGroupSelection.stockGroupId);
-        formData.set("newStockGroupName", stockGroupSelection.newStockGroupName);
         formData.set("active", String(active));
         formData.set("featured", String(featured));
         formData.set("contactToBuy", String(contactToBuy));
@@ -299,7 +295,7 @@ export function ProductEditor({
     setName(product.name);
     setDescription(product.description ?? "");
     setCategoryId(product.categoryId);
-    setStockGroupSelection({ stockGroupId: product.stockGroupId, newStockGroupName: "" });
+    setStockGroupSelection({ stockGroupId: product.stockGroupId });
     setStockGroupResetKey((k) => k + 1);
     setActive(product.active);
     setFeatured(product.featured);
@@ -447,7 +443,6 @@ export function ProductEditor({
           key={stockGroupResetKey}
           groups={stockGroups}
           defaultGroupId={product.stockGroupId}
-          newGroupNamePlaceholder={`Nombre del grupo (vacío = "${product.name}")`}
           onChange={setStockGroupSelection}
         />
 

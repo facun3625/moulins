@@ -16,7 +16,7 @@ export function CartButton({ overlay = false }: { overlay?: boolean }) {
       onClick={openCart}
       variant="outline"
       size="icon"
-      className={cn("relative", overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25")}
+      className={cn("relative", overlay && "border-white/30 bg-white/15 text-white hover:bg-white/25 hover:text-white")}
     >
       <ShoppingBagIcon />
       {itemCount > 0 && (

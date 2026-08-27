@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,77 +13,66 @@ import {
 } from "@/components/ui/select";
 import { useAdminTheme } from "@/components/admin/admin-theme-root";
 
-const NEW_GROUP = "__new__";
-
-export type StockGroupSelection = { stockGroupId: string; newStockGroupName: string };
+export type StockGroupSelection = { stockGroupId: string };
 
 /**
- * Todo producto pertenece a un grupo de stock (propio o compartido). Este
- * selector deja elegir uno existente o crear uno nuevo al toque, sin tener
- * que ir primero a "Grupos de stock". Sirve tanto en un <form action=...>
- * nativo (usa los name= de los campos) como controlado desde un componente
- * cliente vía onChange.
+ * Todo producto pertenece a un grupo de stock (propio o compartido). Antes
+ * se podía crear uno nuevo al toque desde acá, sin darse cuenta — eso
+ * generaba grupos duplicados por error. Ahora hay que elegir uno que ya
+ * exista; si hace falta uno nuevo, se crea a propósito desde "Grupos de
+ * stock" en la lista de productos, donde además se le carga la cantidad
+ * inicial.
  */
 export function StockGroupPicker({
   groups,
   defaultGroupId,
-  newGroupNamePlaceholder,
   onChange,
 }: {
   groups: { id: string; name: string }[];
   defaultGroupId?: string;
-  newGroupNamePlaceholder?: string;
   onChange?: (value: StockGroupSelection) => void;
 }) {
   const { containerRef } = useAdminTheme();
-  const [selection, setSelection] = useState(defaultGroupId || NEW_GROUP);
-  const [newName, setNewName] = useState("");
+  const [selection, setSelection] = useState(defaultGroupId ?? "");
 
-  useEffect(() => {
-    onChange?.({
-      stockGroupId: selection === NEW_GROUP ? "" : selection,
-      newStockGroupName: selection === NEW_GROUP ? newName : "",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, newName]);
+  function handleChange(value: string) {
+    setSelection(value);
+    onChange?.({ stockGroupId: value });
+  }
 
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor="p-stock-group">Stock</Label>
-      <Select
-        value={selection}
-        onValueChange={(v) => setSelection(String(v))}
-        name={selection === NEW_GROUP ? undefined : "stockGroupId"}
-        items={[
-          { value: NEW_GROUP, label: "+ Crear grupo nuevo" },
-          ...groups.map((g) => ({ value: g.id, label: g.name })),
-        ]}
-      >
-        <SelectTrigger id="p-stock-group" className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent container={containerRef}>
-          <SelectItem value={NEW_GROUP}>+ Crear grupo nuevo</SelectItem>
-          {groups.map((g) => (
-            <SelectItem key={g.id} value={g.id}>
-              {g.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {selection === NEW_GROUP ? (
-        <Input
-          name="newStockGroupName"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder={newGroupNamePlaceholder ?? "Nombre del grupo (vacío = usa el nombre del producto)"}
-        />
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Este producto va a compartir stock con todo lo que esté en este grupo. Si es la
-          primera vez que lo usás para este producto, cargá la cantidad en Fechas y stock.
+      {groups.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+          Todavía no creaste ningún grupo de stock. Creá uno primero desde{" "}
+          <Link href="/admin/productos?panel=grupos" className="font-medium text-primary hover:underline">
+            Productos → Grupos de stock
+          </Link>
+          .
         </p>
+      ) : (
+        <Select value={selection} onValueChange={(v) => handleChange(String(v))} name="stockGroupId" required>
+          <SelectTrigger id="p-stock-group" className="w-full">
+            <SelectValue placeholder="Elegí un grupo de stock" />
+          </SelectTrigger>
+          <SelectContent container={containerRef}>
+            {groups.map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
+      <p className="text-xs text-muted-foreground">
+        Este producto va a compartir stock con todo lo que esté en ese grupo. ¿Necesitás uno
+        nuevo? Creálo desde{" "}
+        <Link href="/admin/productos?panel=grupos" className="font-medium text-foreground hover:underline">
+          Productos → Grupos de stock
+        </Link>
+        .
+      </p>
     </div>
   );
 }
