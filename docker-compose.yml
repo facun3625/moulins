@@ -3,16 +3,18 @@
 # deploy) y la app corre con PM2, no con Docker.
 services:
   db:
+    container_name: moulins_postgres
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: pedidos
       POSTGRES_PASSWORD: pedidos
-      POSTGRES_DB: pedidos
+      POSTGRES_DB: moulins
     ports:
-      - "5442:5432"
+      - "5446:5432"
     volumes:
       - pedidos_db_data:/var/lib/postgresql/data
 
 volumes:
   pedidos_db_data:
+    name: moulins_db_data

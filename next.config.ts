@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Configuración compartida por catálogo, servicios y consultas.
+  // Configuración compartida por catálogo, servicios y consultas de Moulins.
   images: {
     // Foto de perfil de Google (login con Google) — sin esto, next/image
     // rechaza cualquier URL externa que no esté en esta lista.
