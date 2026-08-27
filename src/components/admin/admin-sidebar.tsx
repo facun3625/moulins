@@ -18,6 +18,8 @@ import {
   UsersIcon,
   BarChart3Icon,
   ChevronDownIcon,
+  ConciergeBellIcon,
+  MessageSquareTextIcon,
 } from "lucide-react";
 
 import { useStoreSettings } from "@/lib/store-settings-context";
@@ -35,6 +37,8 @@ const sections = [
       { href: "/admin/productos?panel=grupos", label: "Grupos de stock", panel: "grupos" },
     ],
   },
+  { href: "/admin/servicios", label: "Servicios", icon: ConciergeBellIcon },
+  { href: "/admin/consultas", label: "Consultas", icon: MessageSquareTextIcon },
   { href: "/admin/fechas", label: "Fechas y stock", icon: CalendarDaysIcon },
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardListIcon },
   { href: "/admin/pagos", label: "Medios de pago", icon: CreditCardIcon },
@@ -46,7 +50,7 @@ const sections = [
   { href: "/admin/configuracion", label: "Configuración", icon: SettingsIcon },
 ];
 
-export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function AdminSidebar({ onNavigate, newInquiryCount = 0 }: { onNavigate?: () => void; newInquiryCount?: number }) {
   const { storeName, logoUrl } = useStoreSettings();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,6 +104,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <Icon className="size-4 shrink-0" />
                 <span className="flex-1">{s.label}</span>
+                {s.href === "/admin/consultas" && newInquiryCount > 0 && <span className={cn("flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold", active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground")}>{newInquiryCount > 99 ? "99+" : newInquiryCount}</span>}
                 {s.subitems && (
                   <ChevronDownIcon
                     className={cn(

@@ -28,6 +28,19 @@ const SIZE_LABELS: Record<SizeKey, string> = {
   h3: "Subtítulo",
   h2: "Título",
 };
+const FONT_SIZES: Record<SizeKey, string | null> = { p: null, h3: "1.125rem", h2: "1.375rem" };
+const FontSizeTextStyle = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: (element) => element.style.fontSize || null,
+        renderHTML: (attributes) => attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {},
+      },
+    };
+  },
+});
 
 // Editor WYSIWYG (Tiptap) genérico: negrita, tamaño, color, alineación e
 // imágenes — lo que ves es lo que se guarda, sin sintaxis de por medio.
@@ -58,7 +71,7 @@ export function RichTextEditor({
         blockquote: false,
         horizontalRule: false,
       }),
-      TextStyle,
+      FontSizeTextStyle,
       Color,
       TextAlign.configure({ types: ["paragraph", "heading"] }),
       Image.configure({ HTMLAttributes: { class: "rounded-xl" } }),
@@ -77,16 +90,12 @@ export function RichTextEditor({
     },
   });
 
-  const currentSize: SizeKey = editor?.isActive("heading", { level: 2 })
-    ? "h2"
-    : editor?.isActive("heading", { level: 3 })
-      ? "h3"
-      : "p";
+  const selectedFontSize = editor?.getAttributes("textStyle").fontSize;
+  const currentSize: SizeKey = selectedFontSize === FONT_SIZES.h2 ? "h2" : selectedFontSize === FONT_SIZES.h3 ? "h3" : "p";
 
   function setSize(size: SizeKey) {
     if (!editor) return;
-    if (size === "p") editor.chain().focus().setParagraph().run();
-    else editor.chain().focus().toggleHeading({ level: size === "h2" ? 2 : 3 }).run();
+    editor.chain().focus().setMark("textStyle", { fontSize: FONT_SIZES[size] }).run();
   }
 
   async function handleFile(file: File | null) {

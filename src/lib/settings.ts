@@ -12,6 +12,7 @@ export type StoreSettings = {
   whatsapp: string | null;
   instagram: string | null;
   addToCartLabel: string;
+  hasServices: boolean;
 };
 
 const DEFAULT_STORE_NAME = "Pedidos";
@@ -31,9 +32,14 @@ const SETTINGS_KEYS = [
 ] as const;
 
 export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
-  const rows = await prisma.settings.findMany({
-    where: { key: { in: [...SETTINGS_KEYS] } },
-  });
+  // En desarrollo, Next puede conservar en memoria un PrismaClient creado
+  // antes de ejecutar `prisma generate`. El optional chaining evita que un
+  // modelo recién agregado derribe el layout completo hasta reiniciar dev.
+  const serviceCountPromise = prisma.service?.count({ where: { active: true } }) ?? Promise.resolve(0);
+  const [rows, serviceCount] = await Promise.all([
+    prisma.settings.findMany({ where: { key: { in: [...SETTINGS_KEYS] } } }),
+    serviceCountPromise,
+  ]);
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
     storeName: map.store_name || DEFAULT_STORE_NAME,
@@ -46,6 +52,7 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     whatsapp: map.store_whatsapp || null,
     instagram: map.store_instagram || null,
     addToCartLabel: map.store_add_to_cart_label || DEFAULT_ADD_TO_CART_LABEL,
+    hasServices: serviceCount > 0,
   };
 });
 

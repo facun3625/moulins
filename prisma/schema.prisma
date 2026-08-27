@@ -167,6 +167,99 @@ model ProductImage {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
+// ---------- Servicios cotizados por presupuesto ----------
+
+enum ServiceFieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  SELECT
+}
+
+model Service {
+  id String @id @default(cuid())
+  title String
+  description String
+  descriptionColumns Boolean @default(false)
+  formTitle String
+  submitLabel String @default("Enviar consulta")
+  active Boolean @default(true)
+  order Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  fields ServiceField[]
+  images ServiceImage[]
+  inquiries ServiceInquiry[]
+}
+
+model ServiceField {
+  id String @id @default(cuid())
+  serviceId String
+  label String
+  type ServiceFieldType @default(TEXT)
+  required Boolean @default(false)
+  options String[] @default([])
+  order Int @default(0)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@index([serviceId, order])
+}
+
+model ServiceImage {
+  id String @id @default(cuid())
+  serviceId String
+  url String
+  order Int @default(0)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@index([serviceId, order])
+}
+
+enum ServiceInquiryStatus {
+  NEW
+  IN_PROGRESS
+  QUOTED
+  RESPONDED
+  ACCEPTED
+  REJECTED
+  CLOSED
+}
+
+model ServiceInquiry {
+  id                String               @id @default(cuid())
+  serviceId         String?
+  serviceTitle      String
+  answers           Json
+  status            ServiceInquiryStatus @default(NEW)
+  quotedAmount      Decimal?             @db.Decimal(12, 2)
+  internalNotes     String?
+  telegramSent      Boolean              @default(false)
+  emailSent         Boolean              @default(false)
+  notificationError String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  events  ServiceInquiryEvent[]
+
+  @@index([status, createdAt])
+  @@index([serviceId])
+}
+
+model ServiceInquiryEvent {
+  id           String               @id @default(cuid())
+  inquiryId    String
+  status       ServiceInquiryStatus
+  quotedAmount Decimal?             @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime             @default(now())
+
+  inquiry ServiceInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, createdAt])
+}
+
 // ---------- Fechas de entrega y stock ----------
 
 enum DeliveryDateStatus {

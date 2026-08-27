@@ -13,7 +13,7 @@ import { WhatsAppIcon, InstagramIcon } from "./social-icons";
 export function MobileHamburgerMenu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { address, phone, email, whatsapp, instagram } = useStoreSettings();
+  const { address, phone, email, whatsapp, instagram, hasServices } = useStoreSettings();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -39,6 +39,18 @@ export function MobileHamburgerMenu() {
             >
               Tienda
             </Link>
+            {hasServices && (
+              <Link
+                href="/servicios"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+                  pathname.startsWith("/servicios") ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
+                )}
+              >
+                Servicios
+              </Link>
+            )}
             <Link 
               href="/sobre-nosotros" 
               onClick={() => setOpen(false)} 

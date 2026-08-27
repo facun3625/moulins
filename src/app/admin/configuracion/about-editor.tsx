@@ -17,17 +17,19 @@ export function AboutEditor({
   columns,
   onChangeHtml,
   onChangeColumns,
+  onUploadImage = handleUploadImage,
 }: {
   html: string;
   columns: boolean;
   onChangeHtml: (html: string) => void;
   onChangeColumns: (columns: boolean) => void;
+  onUploadImage?: (file: File) => Promise<string>;
 }) {
   return (
     <RichTextEditor
       html={html}
       onChangeHtml={onChangeHtml}
-      onUploadImage={handleUploadImage}
+      onUploadImage={onUploadImage}
       toolbarExtra={
         <>
           <span className="mx-0.5 h-4 w-px bg-border" />

@@ -4,22 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-
-const LINKS = [
-  { href: "/", label: "Tienda" },
-  { href: "/sobre-nosotros", label: "Sobre nosotros" },
-];
+import { useStoreSettings } from "@/lib/store-settings-context";
 
 export function StoreNav({ variant = "card" }: { variant?: "card" | "overlay" }) {
   const pathname = usePathname();
+  const { hasServices } = useStoreSettings();
+  const links = [
+    { href: "/", label: "Tienda" },
+    ...(hasServices ? [{ href: "/servicios", label: "Servicios" }] : []),
+    { href: "/sobre-nosotros", label: "Sobre nosotros" },
+  ];
 
   return (
     <div className={cn(
       "flex items-center gap-1",
       variant === "overlay" && "rounded-full bg-black/30 p-1 backdrop-blur-md ring-[1.5px] ring-white/40"
     )}>
-      {LINKS.map((link) => {
-        const active = pathname === link.href;
+      {links.map((link) => {
+        const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
         return (
           <Link
             key={link.href}

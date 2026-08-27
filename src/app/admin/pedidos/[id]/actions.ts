@@ -61,6 +61,7 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   });
   revalidatePath(`/admin/pedidos/${orderId}`);
   revalidatePath("/admin/pedidos");
+  revalidatePath("/admin", "layout");
 }
 
 export async function approveOrder(orderId: string) {
@@ -77,6 +78,7 @@ export async function approveOrder(orderId: string) {
 
   revalidatePath(`/admin/pedidos/${orderId}`);
   revalidatePath("/admin/pedidos");
+  revalidatePath("/admin", "layout");
 }
 
 export async function rejectOrder(orderId: string) {
@@ -93,4 +95,5 @@ export async function rejectOrder(orderId: string) {
 
   revalidatePath(`/admin/pedidos/${orderId}`);
   revalidatePath("/admin/pedidos");
+  revalidatePath("/admin", "layout");
 }

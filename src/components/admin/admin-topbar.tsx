@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
-import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, PackageXIcon } from "lucide-react";
+import { MenuIcon, StoreIcon, ChevronDownIcon, MoonIcon, SunIcon, PackageXIcon, BellIcon, ShoppingBagIcon, MessageSquareTextIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -35,7 +35,9 @@ function initials(name?: string | null) {
     .join("");
 }
 
-export function AdminTopbar({ storeOpen, stockAlerts }: { storeOpen: boolean; stockAlerts: StockAlert[] }) {
+export type AdminNotification = { id: string; type: "ORDER" | "INQUIRY"; title: string; detail: string; href: string; createdAt: string };
+
+export function AdminTopbar({ storeOpen, stockAlerts, newInquiryCount = 0, notificationCount = 0, notifications = [] }: { storeOpen: boolean; stockAlerts: StockAlert[]; newInquiryCount?: number; notificationCount?: number; notifications?: AdminNotification[] }) {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { containerRef, theme, toggleTheme } = useAdminTheme();
@@ -65,7 +67,7 @@ export function AdminTopbar({ storeOpen, stockAlerts }: { storeOpen: boolean; st
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false} container={containerRef}>
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+          <AdminSidebar onNavigate={() => setMobileOpen(false)} newInquiryCount={newInquiryCount} />
         </SheetContent>
       </Sheet>
       <Button
@@ -81,6 +83,17 @@ export function AdminTopbar({ storeOpen, stockAlerts }: { storeOpen: boolean; st
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<button aria-label="Notificaciones" className="relative flex size-9 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground" />}>
+            <BellIcon className="size-4" />
+            {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-4.5 text-primary-foreground ring-2 ring-background">{notificationCount > 99 ? "99+" : notificationCount}</span>}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 p-1.5" container={containerRef}>
+            <DropdownMenuLabel className="flex items-center justify-between px-2.5 py-2"><span className="text-sm font-semibold">Notificaciones</span>{notificationCount > 0 && <span className="text-xs font-normal text-muted-foreground">{notificationCount} pendientes</span>}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length ? <DropdownMenuGroup>{notifications.map(notification => { const Icon = notification.type === "ORDER" ? ShoppingBagIcon : MessageSquareTextIcon; return <DropdownMenuItem key={`${notification.type}-${notification.id}`} render={<Link href={notification.href} />} className="items-start gap-3 rounded-lg px-2.5 py-3"><span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Icon className="size-4" /></span><span className="flex min-w-0 flex-1 flex-col gap-0.5"><span className="truncate text-sm font-medium">{notification.title}</span><span className="truncate text-xs text-muted-foreground">{notification.detail}</span><span className="text-[10px] text-muted-foreground/70">{new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(new Date(notification.createdAt))}</span></span></DropdownMenuItem>; })}</DropdownMenuGroup> : <div className="px-4 py-8 text-center"><BellIcon className="mx-auto size-6 text-muted-foreground/40" /><p className="mt-2 text-sm font-medium">Todo al día</p><p className="mt-1 text-xs text-muted-foreground">No hay pendientes nuevos.</p></div>}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {stockAlerts.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger

@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { getSmtpSettings } from "@/lib/settings";
 
-export type EmailType = "ORDER_CONFIRMATION" | "PASSWORD_RESET" | "TEST_SMTP" | "TEST_ORDER";
+export type EmailType = "ORDER_CONFIRMATION" | "PASSWORD_RESET" | "TEST_SMTP" | "TEST_ORDER" | "SERVICE_INQUIRY";
 
 let warned = false;
 
