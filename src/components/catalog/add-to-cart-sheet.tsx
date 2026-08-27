@@ -34,7 +34,7 @@ export function AddToCartSheet({
   readOnly?: boolean;
 }) {
   const quickAdd = useQuickAdd(deliveryDateId);
-  const { cart } = useCart();
+  const { cart, addItem, confirmReplace } = useCart();
   const { addToCartLabel, whatsapp } = useStoreSettings();
 
   // Keep showing the last selected product while the dialog animates closed
@@ -44,6 +44,9 @@ export function AddToCartSheet({
   const [displayProduct, setDisplayProduct] = useState(product);
   const [variantId, setVariantId] = useState(() => firstAvailableVariantId(product));
   const [quantity, setQuantity] = useState(1);
+  // Para productos con más de una variante: cantidad por variante, para
+  // poder pedir por ejemplo "una grande y una mediana" en un solo agregado.
+  const [variantQty, setVariantQty] = useState<Record<string, number>>({});
   const [imageIndex, setImageIndex] = useState(0);
   const [checking, setChecking] = useState(false);
 
@@ -51,6 +54,7 @@ export function AddToCartSheet({
     setDisplayProduct(product);
     setVariantId(firstAvailableVariantId(product));
     setQuantity(1);
+    setVariantQty({});
     setImageIndex(0);
   }
 
@@ -68,6 +72,90 @@ export function AddToCartSheet({
     ? roomToAdd(cart.items, displayProduct.stockGroupId, variant.remaining, variant.id)
     : 0;
   const hasMultipleVariants = displayProduct.variants.length > 1;
+
+  // El stock se trackea por producto (o por grupo), no por variante — todas
+  // comparten el mismo remanente, así que el margen es uno solo para todo
+  // el diálogo, repartido entre las filas que el cliente vaya eligiendo.
+  const sharedRemaining = displayProduct.variants[0]?.remaining ?? 0;
+  const sharedAddRoom = roomToAdd(cart.items, displayProduct.stockGroupId, sharedRemaining);
+  const totalVariantQty = Object.values(variantQty).reduce((s, q) => s + q, 0);
+  const totalVariantPrice = displayProduct.variants.reduce(
+    (s, v) => s + (variantQty[v.id] ?? 0) * v.price,
+    0,
+  );
+
+  function incVariant(id: string) {
+    setVariantQty((prev) => {
+      const current = prev[id] ?? 0;
+      if (totalVariantQty >= sharedAddRoom) return prev;
+      return { ...prev, [id]: current + 1 };
+    });
+  }
+
+  function decVariant(id: string) {
+    setVariantQty((prev) => {
+      const current = prev[id] ?? 0;
+      if (current <= 0) return prev;
+      return { ...prev, [id]: current - 1 };
+    });
+  }
+
+  async function handleAddMulti() {
+    if (!displayProduct) return;
+    const entries = Object.entries(variantQty).filter(([, q]) => q > 0);
+    if (entries.length === 0) return;
+
+    setChecking(true);
+    const fresh = await checkRemainingStock(deliveryDateId, displayProduct.id);
+    setChecking(false);
+
+    const room = roomToAdd(cart.items, displayProduct.stockGroupId, fresh);
+    const totalRequested = entries.reduce((s, [, q]) => s + q, 0);
+    if (room <= 0) {
+      toast.error(`Se agotó el stock de "${displayProduct.name}".`);
+      return;
+    }
+    if (totalRequested > room) {
+      toast.error(`Solo quedan ${room} disponibles de "${displayProduct.name}".`);
+      return;
+    }
+
+    function payloadFor(variantId: string) {
+      const v = displayProduct!.variants.find((x) => x.id === variantId)!;
+      return {
+        productVariantId: v.id,
+        productId: displayProduct!.id,
+        productName: displayProduct!.name,
+        variantLabel: v.label,
+        unitPrice: v.price,
+        imageUrl: displayProduct!.imageUrl,
+        maxQuantity: fresh,
+        stockGroupId: displayProduct!.stockGroupId,
+      };
+    }
+
+    const needsConfirmation = cart.items.length > 0 && cart.deliveryDateId !== deliveryDateId;
+    if (needsConfirmation) {
+      toast("Tu carrito tiene productos de otra fecha", {
+        description: "Agregar esto vacía lo que tenías antes.",
+        action: {
+          label: "Reemplazar",
+          onClick: () => {
+            entries.forEach(([id, qty], idx) => {
+              if (idx === 0) confirmReplace(deliveryDateId, payloadFor(id), qty);
+              else addItem(deliveryDateId, payloadFor(id), qty);
+            });
+            toast.success("Agregado");
+          },
+        },
+      });
+      return;
+    }
+
+    entries.forEach(([id, qty]) => addItem(deliveryDateId, payloadFor(id), qty));
+    toast.success("Agregado");
+    onClose();
+  }
   const images = displayProduct.images.length > 0 ? displayProduct.images : displayProduct.imageUrl ? [displayProduct.imageUrl] : [];
   const hasMultipleImages = images.length > 1;
 
@@ -191,35 +279,48 @@ export function AddToCartSheet({
           {hasMultipleVariants && (
             <div className="flex flex-col gap-2">
               {displayProduct.variants.map((v) => {
-                const disabled = roomToAdd(cart.items, displayProduct.stockGroupId, v.remaining, v.id) <= 0;
-                const active = v.id === variantId;
+                const qty = variantQty[v.id] ?? 0;
                 return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setVariantId(v.id)}
-                    className={cn(
-                      "flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40",
-                      active ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                  <div key={v.id} className="flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{v.label}</span>
+                      {!displayProduct.contactToBuy && (
+                        <span className="text-sm text-muted-foreground">{formatPrice(v.price)}</span>
+                      )}
+                    </div>
+                    {!readOnly && !displayProduct.contactToBuy && (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={qty <= 0}
+                          onClick={() => decVariant(v.id)}
+                          className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground disabled:opacity-40"
+                        >
+                          <MinusIcon className="size-3.5" />
+                        </button>
+                        <span className="w-5 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                        <button
+                          type="button"
+                          disabled={totalVariantQty >= sharedAddRoom}
+                          onClick={() => incVariant(v.id)}
+                          className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+                        >
+                          <PlusIcon className="size-3.5" />
+                        </button>
+                      </div>
                     )}
-                  >
-                    <span className="font-medium">{v.label}</span>
-                    {!displayProduct.contactToBuy && (
-                      <span className="flex items-center gap-2">
-                        {disabled && (
-                          <span className="text-xs text-muted-foreground">Sin stock</span>
-                        )}
-                        <span className="font-semibold">{formatPrice(v.price)}</span>
-                      </span>
-                    )}
-                  </button>
+                  </div>
                 );
               })}
+              {!readOnly && !displayProduct.contactToBuy && sharedAddRoom <= 0 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  No queda stock disponible para este producto.
+                </p>
+              )}
             </div>
           )}
 
-          {!readOnly && !displayProduct.contactToBuy && (
+          {!hasMultipleVariants && !readOnly && !displayProduct.contactToBuy && (
             <div className="flex w-full items-center justify-between rounded-full border bg-background px-1.5 py-1.5 shadow-sm">
               <button
                 type="button"
@@ -242,7 +343,7 @@ export function AddToCartSheet({
               </button>
             </div>
           )}
-          {!readOnly && !displayProduct.contactToBuy && addRoom <= 0 && (
+          {!hasMultipleVariants && !readOnly && !displayProduct.contactToBuy && addRoom <= 0 && (
             <p className="text-center text-xs text-muted-foreground">
               No queda stock disponible para este producto.
             </p>
@@ -269,6 +370,16 @@ export function AddToCartSheet({
             <p className="text-center text-sm text-muted-foreground">
               Todavía no se puede pedir — volvé a mirar cuando abramos.
             </p>
+          ) : hasMultipleVariants ? (
+            <Button
+              size="lg"
+              disabled={totalVariantQty <= 0 || checking}
+              onClick={handleAddMulti}
+              className="w-full justify-between gap-3 rounded-full px-6"
+            >
+              <span className="truncate">{checking ? "Verificando..." : addToCartLabel}</span>
+              <span className="shrink-0">{formatPrice(totalVariantPrice)}</span>
+            </Button>
           ) : (
             <Button
               size="lg"

@@ -303,6 +303,9 @@ export function CheckoutForm({
             <div key={item.productVariantId} className="flex items-center justify-between gap-2 text-sm">
               <span className="min-w-0 truncate">
                 {item.quantity}× {item.productName}
+                {item.variantLabel !== "Único" && (
+                  <span className="text-muted-foreground"> ({item.variantLabel})</span>
+                )}
               </span>
               <span className="shrink-0 font-medium">{formatPrice(item.unitPrice * item.quantity)}</span>
             </div>

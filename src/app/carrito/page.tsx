@@ -48,6 +48,9 @@ export default function CartPage() {
 
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate font-medium">{item.productName}</span>
+                    {item.variantLabel !== "Único" && (
+                      <span className="truncate text-xs text-muted-foreground">{item.variantLabel}</span>
+                    )}
                     <span className="font-semibold text-primary">
                       {formatPrice(item.unitPrice * item.quantity)}
                     </span>

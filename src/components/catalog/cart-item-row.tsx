@@ -45,6 +45,9 @@ export function CartItemRow({ item }: { item: CartItem }) {
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-sm font-medium">{item.productName}</span>
+        {item.variantLabel !== "Único" && (
+          <span className="truncate text-xs text-muted-foreground">{item.variantLabel}</span>
+        )}
         <span className="text-sm font-semibold text-primary">
           {formatPrice(item.unitPrice * item.quantity)}
         </span>

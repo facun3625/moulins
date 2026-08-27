@@ -85,6 +85,11 @@ export default async function OrderDetailPage({
                     <span className="truncate text-sm font-medium">
                       {item.productVariant.product.name}
                     </span>
+                    {(item.productVariant.gusto || item.productVariant.tamano) && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {[item.productVariant.gusto, item.productVariant.tamano].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {item.quantity} × {formatPrice(Number(item.unitPrice))}
                     </span>

@@ -2,13 +2,7 @@ import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { createProduct } from "../actions";
-import { CategorySelect } from "./category-select";
-import { StockGroupPicker } from "../stock-group-picker";
+import { NewProductForm } from "./new-product-form";
 
 export default async function NewProductPage() {
   await requireAdmin();
@@ -29,30 +23,7 @@ export default async function NewProductPage() {
           </Link>
         </p>
       ) : (
-        <form action={createProduct} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" required />
-          </div>
-
-          <CategorySelect categories={categories} />
-
-          <StockGroupPicker groups={stockGroups} />
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea id="description" name="description" rows={3} />
-          </div>
-
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1">
-              Crear y agregar variantes
-            </Button>
-            <Button type="button" variant="outline" render={<Link href="/admin/productos" />}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
+        <NewProductForm categories={categories} stockGroups={stockGroups} />
       )}
     </div>
   );
