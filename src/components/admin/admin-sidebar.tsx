@@ -81,7 +81,7 @@ export function AdminSidebar({ onNavigate, newInquiryCount = 0, newOrderCount = 
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
+      <nav className="flex flex-1 flex-col gap-0 px-3 py-2">
         {sections.map((s) => {
           const active = s.href === "/admin" ? pathname === "/admin" : pathname.startsWith(s.href);
           const expanded = expandedHref === s.href;
@@ -96,7 +96,7 @@ export function AdminSidebar({ onNavigate, newInquiryCount = 0, newOrderCount = 
                 }}
                 aria-expanded={s.subitems ? expanded : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex min-h-8 items-center gap-2.5 rounded-lg px-3 py-1 text-sm font-medium transition-colors",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
