@@ -189,10 +189,7 @@ curl http://localhost:<PUERTO_APP>/api/health  # si existe endpoint de health
 
 ```bash
 cd /root/<nombre>/<nombre>
-git pull origin main
-npx prisma db push   # solo si hubo cambios en el schema
-npm run build
-pm2 restart <nombre>
+PM2_APP_NAME=<nombre> npm run deploy
 ```
 
 ---

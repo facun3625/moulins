@@ -49,3 +49,16 @@ en la guía interna del VPS. Puntos específicos de esta app:
   configuración extra, con PM2 corriendo directo sobre el filesystem del
   VPS ya persisten solos entre deploys (`git pull` nunca borra archivos sin
   trackear).
+
+### Actualizaciones
+
+Con la app ya registrada en PM2 como `moulins`, ejecutar desde el repositorio:
+
+```bash
+npm run deploy
+```
+
+El script actualiza `main`, instala las dependencias del lockfile, genera el
+cliente de Prisma, aplica las migraciones, compila y recién entonces reinicia
+PM2. Se pueden cambiar el proceso y la rama con `PM2_APP_NAME` y
+`DEPLOY_BRANCH`, respectivamente.
